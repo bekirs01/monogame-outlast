@@ -18,7 +18,15 @@ public class TileMap
     public int ExitRoomIndexX { get; }
     public int ExitRoomIndexY { get; }
 
-    public TileMap(int[,] tileData, int tileSizePixels, int exitRoomIndexX, int exitRoomIndexY)
+    /// <summary>Oda başına adım (iç labirent + 2 kenar). Harita üretimiyle aynı olmalı.</summary>
+    public int RoomStepTiles { get; }
+
+    /// <summary>Kenar başına oda sayısı: basit 2 (2×2), zor 3 (3×3).</summary>
+    public int RoomsPerSide { get; }
+
+    public int TilesPerRoomSide => RoomStepTiles + 1;
+
+    public TileMap(int[,] tileData, int tileSizePixels, int exitRoomIndexX, int exitRoomIndexY, int roomStepTiles, int roomsPerSide = 3)
     {
         WidthInTiles = tileData.GetLength(0);
         HeightInTiles = tileData.GetLength(1);
@@ -26,16 +34,28 @@ public class TileMap
         _tiles = tileData;
         ExitRoomIndexX = exitRoomIndexX;
         ExitRoomIndexY = exitRoomIndexY;
+        RoomStepTiles = roomStepTiles;
+        RoomsPerSide = roomsPerSide;
     }
 
-    public static void GetRoomIndexForTile(int gridX, int gridY, out int roomX, out int roomY)
+    public void GetRoomIndexForTile(int gridX, int gridY, out int roomX, out int roomY)
     {
-        int s = MapData.RoomStepTiles;
-        roomX = Math.Clamp(gridX / s, 0, 2);
-        roomY = Math.Clamp(gridY / s, 0, 2);
+        int max = RoomsPerSide - 1;
+        int s = RoomStepTiles;
+        roomX = Math.Clamp(gridX / s, 0, max);
+        roomY = Math.Clamp(gridY / s, 0, max);
     }
 
-    public static int RoomThemeIndex(int roomX, int roomY) => roomX + roomY * 3;
+    public static void GetRoomIndexForTile(int gridX, int gridY, int roomStepTiles, int roomsPerSide, out int roomX, out int roomY)
+    {
+        int max = roomsPerSide - 1;
+        roomX = Math.Clamp(gridX / roomStepTiles, 0, max);
+        roomY = Math.Clamp(gridY / roomStepTiles, 0, max);
+    }
+
+    public int RoomThemeIndexForDraw(int roomX, int roomY) => roomX + roomY * RoomsPerSide;
+
+    public static int RoomThemeIndex(int roomX, int roomY, int roomsPerSide = 3) => roomX + roomY * roomsPerSide;
 
     public int GetTileId(int tileX, int tileY) => _tiles[tileX, tileY];
 
@@ -72,7 +92,7 @@ public class TileMap
             {
                 var dest = new Rectangle(x * s, y * s, s, s);
                 GetRoomIndexForTile(x, y, out int rx, out int ry);
-                int ti = RoomThemeIndex(rx, ry);
+                int ti = RoomThemeIndexForDraw(rx, ry);
                 Texture2D floorTex = floorByRoom[ti];
                 Texture2D wallTex = wallByRoom[ti];
 

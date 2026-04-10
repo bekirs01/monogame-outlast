@@ -15,7 +15,7 @@ public class TileMapLogicTests
         g[2, 2] = 1;
         g[3, 3] = 5;
 
-        var map = new TileMap(g, 16, 0, 0);
+        var map = new TileMap(g, 16, 0, 0, MapData.RoomStepTiles);
 
         Assert.True(map.BlocksPlayer(2, 2));
         Assert.True(map.BlocksPlayer(3, 3));
@@ -32,7 +32,7 @@ public class TileMapLogicTests
                 g[x, y] = 0;
         g[2, 2] = 4;
 
-        var map = new TileMap(g, 16, 0, 0);
+        var map = new TileMap(g, 16, 0, 0, MapData.RoomStepTiles);
 
         Assert.True(map.BlocksPlayer(2, 2, 0));
         Assert.True(map.BlocksPlayer(2, 2, 2));
@@ -47,7 +47,7 @@ public class TileMapLogicTests
     [InlineData(38, 38, 2, 2)]
     public void GetRoomIndexForTile_clamps_to_three_by_three(int gx, int gy, int ex, int ey)
     {
-        TileMap.GetRoomIndexForTile(gx, gy, out int rx, out int ry);
+        TileMap.GetRoomIndexForTile(gx, gy, MapData.RoomStepTiles, 3, out int rx, out int ry);
         Assert.Equal(ex, rx);
         Assert.Equal(ey, ry);
     }
@@ -57,7 +57,7 @@ public class TileMapLogicTests
     {
         var g = new int[10, 10];
         g[0, 0] = 0;
-        var map = new TileMap(g, 8, 2, 1);
+        var map = new TileMap(g, 8, 2, 1, MapData.RoomStepTiles);
         Assert.Equal(2, map.ExitRoomIndexX);
         Assert.Equal(1, map.ExitRoomIndexY);
     }
@@ -66,7 +66,7 @@ public class TileMapLogicTests
     public void Pixel_dimensions_scale_with_tile_size()
     {
         var g = new int[4, 4];
-        var map = new TileMap(g, 24, 0, 0);
+        var map = new TileMap(g, 24, 0, 0, MapData.RoomStepTiles);
         Assert.Equal(96, map.WidthPixels);
         Assert.Equal(96, map.HeightPixels);
     }

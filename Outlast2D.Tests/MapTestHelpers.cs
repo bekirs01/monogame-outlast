@@ -84,6 +84,6 @@ internal static class MapTestHelpers
                 g[x, y] = 0;
         }
 
-        return new TileMap(g, tilePx, 0, 0);
+        return new TileMap(g, tilePx, 0, 0, MapData.RoomStepTiles);
     }
 }

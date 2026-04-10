@@ -36,7 +36,7 @@ public class PlayerMovementTests
                 g[x, y] = 0;
         g[6, 5] = 1;
 
-        var map = new TileMap(g, 16, 0, 0);
+        var map = new TileMap(g, 16, 0, 0, MapData.RoomStepTiles);
         var p = new Player(5, 5);
 
         var kb = new KeyboardState(Keys.D);

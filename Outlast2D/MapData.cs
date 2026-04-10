@@ -3,23 +3,33 @@ using System.Collections.Generic;
 
 namespace Outlast2D;
 
-/// <summary>3×3 oda; her oda ayrı labirent tohumu (9 farklı düzen). Kenney görselleri TileMap çiziminde kullanılır.</summary>
+/// <summary>Zor: 3×3 oda. Basit: 2×2 oda (aynı iç oda boyutu). Kenney görselleri TileMap çiziminde kullanılır.</summary>
 public static class MapData
 {
     public const int RoomInnerTiles = 17;
     public const int RoomStepTiles = RoomInnerTiles + 2;
     public const int TilesPerRoomSide = RoomStepTiles + 1;
 
+    /// <summary>Basit harita: iç oda kare sayısı ≈ zor haritanın yarısı (17→8).</summary>
+    public const int RoomInnerTilesEasy = 8;
+
     public const int MazeSeed = 424242;
 
     // 0 zemin, 1 duvar, 2 kapı, 3 sandık, 4 çıkış, 5 engel
 
-    public static DungeonMapResult CreateDungeonMap(int tileSizePixels)
+    public static DungeonMapResult CreateDungeonMap(int tileSizePixels, MapDifficulty difficulty = MapDifficulty.Hard)
     {
-        const int roomInner = RoomInnerTiles;
-        const int step = RoomStepTiles;
-        const int mapW = step * 3 + 1;
-        const int mapH = step * 3 + 1;
+        int roomInner = difficulty == MapDifficulty.Easy ? RoomInnerTilesEasy : RoomInnerTiles;
+        int step = roomInner + 2;
+        // Basit: 2×2 oda (4 oda, tam bağlantı); zor: 3×3.
+        int roomsPerSide = difficulty == MapDifficulty.Easy ? 2 : 3;
+
+        int startX = difficulty == MapDifficulty.Easy ? 4 : 8;
+        int startY = difficulty == MapDifficulty.Easy ? 4 : 8;
+        GetMiddleRoomRevealCell(step, roomInner, roomsPerSide, out int revealX, out int revealY);
+
+        int mapW = step * roomsPerSide + 1;
+        int mapH = step * roomsPerSide + 1;
         int mid = (roomInner + 1) / 2;
 
         var grid = new int[mapW, mapH];
@@ -29,9 +39,9 @@ public static class MapData
                 grid[x, y] = 1;
         }
 
-        for (int ry = 0; ry < 3; ry++)
+        for (int ry = 0; ry < roomsPerSide; ry++)
         {
-            for (int rx = 0; rx < 3; rx++)
+            for (int rx = 0; rx < roomsPerSide; rx++)
             {
                 int ox = rx * step;
                 int oy = ry * step;
@@ -39,9 +49,9 @@ public static class MapData
             }
         }
 
-        for (int ry = 0; ry < 3; ry++)
+        for (int ry = 0; ry < roomsPerSide; ry++)
         {
-            for (int rx = 0; rx < 2; rx++)
+            for (int rx = 0; rx < roomsPerSide - 1; rx++)
             {
                 int ox = rx * step;
                 int oy = ry * step;
@@ -52,9 +62,9 @@ public static class MapData
             }
         }
 
-        for (int ry = 0; ry < 2; ry++)
+        for (int ry = 0; ry < roomsPerSide - 1; ry++)
         {
-            for (int rx = 0; rx < 3; rx++)
+            for (int rx = 0; rx < roomsPerSide; rx++)
             {
                 int ox = rx * step;
                 int oy = ry * step;
@@ -65,70 +75,83 @@ public static class MapData
             }
         }
 
-        for (int ry = 0; ry < 3; ry++)
+        for (int ry = 0; ry < roomsPerSide; ry++)
         {
-            for (int rx = 0; rx < 3; rx++)
+            for (int rx = 0; rx < roomsPerSide; rx++)
             {
                 int ox = rx * step;
                 int oy = ry * step;
                 int yDoor = oy + mid;
                 int xDoor = ox + mid;
-                if (rx < 2)
+                if (rx < roomsPerSide - 1)
                     grid[ox + roomInner, yDoor] = 0;
                 if (rx > 0)
                     grid[ox + 1, yDoor] = 0;
-                if (ry < 2)
+                if (ry < roomsPerSide - 1)
                     grid[xDoor, oy + roomInner] = 0;
                 if (ry > 0)
                     grid[xDoor, oy + 1] = 0;
             }
         }
 
-        EnsureFloor(grid, 8, 8);
-
-        const int revealX = 36;
-        const int revealY = 36;
+        EnsureFloor(grid, startX, startY);
         EnsureFloor(grid, revealX, revealY);
 
         int worldSeed = unchecked(Environment.TickCount ^ (int)(DateTime.UtcNow.Ticks & 0x7FFFFFFF));
         var rng = new Random(worldSeed);
 
-        PlaceRandomObstaclesPreservingConnectivity(grid, mapW, mapH, rng, 8, 8, revealX, revealY);
+        PlaceRandomObstaclesPreservingConnectivity(grid, mapW, mapH, rng, startX, startY, revealX, revealY, difficulty);
 
-        if (!TryPlaceExit(grid, mapW, mapH, rng, 8, 8, out int exitX, out int exitY))
+        if (!TryPlaceExit(grid, mapW, mapH, rng, startX, startY, out int exitX, out int exitY))
         {
-            if (!TryPlaceExit(grid, mapW, mapH, new Random(0), 8, 8, out exitX, out exitY))
+            if (!TryPlaceExit(grid, mapW, mapH, new Random(0), startX, startY, out exitX, out exitY))
                 throw new InvalidOperationException("Çıkış yeri bulunamadı.");
         }
 
         grid[exitX, exitY] = 4;
 
-        PlaceChestsThreeRooms(grid, mapW, mapH, rng, 8, 8, exitX, exitY, revealX, revealY);
+        PlaceChestsThreeRooms(grid, mapW, mapH, rng, roomInner, step, difficulty, startX, startY, exitX, exitY, revealX, revealY);
 
-        GetRoomIndex(exitX, exitY, out int exitRoomX, out int exitRoomY);
+        GetRoomIndex(exitX, exitY, step, roomsPerSide, out int exitRoomX, out int exitRoomY);
 
         var tileData = (int[,])grid.Clone();
-        var tileMap = new TileMap(tileData, tileSizePixels, exitRoomX, exitRoomY);
+        var tileMap = new TileMap(tileData, tileSizePixels, exitRoomX, exitRoomY, step, roomsPerSide);
 
         return new DungeonMapResult
         {
             TileMap = tileMap,
             ExitRoomIndexX = exitRoomX,
             ExitRoomIndexY = exitRoomY,
+            StartGridX = startX,
+            StartGridY = startY,
+            RevealMarkerGridX = revealX,
+            RevealMarkerGridY = revealY,
         };
+    }
+
+    /// <summary>Orta oda iç labirent merkezi — 2×2 ve 3×3 için (1,1); üzerine gelince tüm harita açılır.</summary>
+    private static void GetMiddleRoomRevealCell(int step, int roomInner, int roomsPerSide, out int gx, out int gy)
+    {
+        int rx = roomsPerSide / 2;
+        int ry = roomsPerSide / 2;
+        int ox = rx * step;
+        int oy = ry * step;
+        gx = ox + 1 + roomInner / 2;
+        gy = oy + 1 + roomInner / 2;
     }
 
     private static int GetRoomMazeSeed(int rx, int ry) =>
         unchecked(MazeSeed + rx * 104729 + ry * 224737 + rx * ry * 1009);
 
-    private static void GetRoomIndex(int gridX, int gridY, out int rx, out int ry)
+    private static void GetRoomIndex(int gridX, int gridY, int step, int roomsPerSide, out int rx, out int ry)
     {
-        rx = gridX / RoomStepTiles;
-        ry = gridY / RoomStepTiles;
-        if (rx > 2)
-            rx = 2;
-        if (ry > 2)
-            ry = 2;
+        int max = roomsPerSide - 1;
+        rx = gridX / step;
+        ry = gridY / step;
+        if (rx > max)
+            rx = max;
+        if (ry > max)
+            ry = max;
     }
 
     private static void EnsureFloor(int[,] grid, int x, int y)
@@ -205,15 +228,15 @@ public static class MapData
 
     private static bool IsWalkableForConnectivity(int id) => id == 0 || id == 2;
 
-    private static bool IsFullyConnected(int[,] grid, int mapW, int mapH)
+    private static bool IsFullyConnected(int[,] grid, int mapW, int mapH, int startX, int startY)
     {
-        if (!IsWalkableForConnectivity(grid[8, 8]))
+        if (!IsWalkableForConnectivity(grid[startX, startY]))
             return false;
 
         var q = new Queue<(int x, int y)>();
         var vis = new bool[mapW, mapH];
-        q.Enqueue((8, 8));
-        vis[8, 8] = true;
+        q.Enqueue((startX, startY));
+        vis[startX, startY] = true;
         int seen = 0;
 
         while (q.Count > 0)
@@ -258,7 +281,8 @@ public static class MapData
         int protectX1,
         int protectY1,
         int protectX2,
-        int protectY2)
+        int protectY2,
+        MapDifficulty difficulty)
     {
         var candidates = new List<(int x, int y)>();
         for (int y = 0; y < mapH; y++)
@@ -278,7 +302,9 @@ public static class MapData
         Shuffle(candidates, rng);
 
         int floorCells = candidates.Count;
-        int target = Math.Min(48, Math.Max(12, floorCells / 4));
+        int minOb = difficulty == MapDifficulty.Easy ? 4 : 12;
+        int maxOb = difficulty == MapDifficulty.Easy ? 18 : 48;
+        int target = Math.Min(maxOb, Math.Max(minOb, floorCells / 4));
         int placed = 0;
 
         foreach (var (x, y) in candidates)
@@ -286,7 +312,7 @@ public static class MapData
             if (placed >= target)
                 break;
             grid[x, y] = 5;
-            if (!IsFullyConnected(grid, mapW, mapH))
+            if (!IsFullyConnected(grid, mapW, mapH, protectX1, protectY1))
                 grid[x, y] = 0;
             else
                 placed++;
@@ -388,12 +414,15 @@ public static class MapData
         return n;
     }
 
-    /// <summary>Üç sandık: (0,0), (1,1), (2,2) odalarında birer tane; yoksa eski rastgele doldurma.</summary>
+    /// <summary>Üç sandık: zor modda köşegen (0,0),(1,1),(2,2); basit 2×2’de üç farklı oda.</summary>
     private static void PlaceChestsThreeRooms(
         int[,] grid,
         int mapW,
         int mapH,
         Random rng,
+        int roomInner,
+        int step,
+        MapDifficulty difficulty,
         int startX,
         int startY,
         int exitX,
@@ -408,12 +437,14 @@ public static class MapData
             (revealX, revealY),
         };
 
-        ReadOnlySpan<(int rx, int ry)> targetRooms = stackalloc[] { (0, 0), (1, 1), (2, 2) };
+        ReadOnlySpan<(int rx, int ry)> targetRooms = difficulty == MapDifficulty.Easy
+            ? stackalloc[] { (0, 0), (1, 0), (0, 1) }
+            : stackalloc[] { (0, 0), (1, 1), (2, 2) };
         int placedCount = 0;
 
         foreach (var (rx, ry) in targetRooms)
         {
-            if (TryPlaceChestInRoom(grid, mapW, mapH, rx, ry, exclude, out int cx, out int cy))
+            if (TryPlaceChestInRoom(grid, mapW, mapH, roomInner, step, rx, ry, exclude, out int cx, out int cy))
             {
                 grid[cx, cy] = 3;
                 placedCount++;
@@ -429,21 +460,22 @@ public static class MapData
         int[,] grid,
         int mapW,
         int mapH,
+        int roomInner,
+        int step,
         int rx,
         int ry,
         HashSet<(int x, int y)> exclude,
         out int cx,
         out int cy)
     {
-        int step = RoomStepTiles;
         int ox = rx * step;
         int oy = ry * step;
         var deadEnds = new List<(int x, int y)>();
         var floors = new List<(int x, int y)>();
 
-        for (int ly = 1; ly <= RoomInnerTiles; ly++)
+        for (int ly = 1; ly <= roomInner; ly++)
         {
-            for (int lx = 1; lx <= RoomInnerTiles; lx++)
+            for (int lx = 1; lx <= roomInner; lx++)
             {
                 int gx = ox + lx;
                 int gy = oy + ly;
