@@ -1,0 +1,39 @@
+# Build
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+*.dll
+*.exe
+*.pdb
+*.cache
+
+# NuGet
+*.nupkg
+**/packages/
+project.lock.json
+
+# IDE
+.vs/
+.idea/
+*.user
+*.userosscache
+*.suo
+*.sln.docstates
+.vscode/*
+!.vscode/extensions.json
+
+# MonoGame / MGCB
+**/Content/bin/
+**/Content/obj/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test / coverage
+TestResults/
+coverage*.json
+coverage*.xml
+*.coverage
+*.coveragexml

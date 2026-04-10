@@ -1,0 +1,127 @@
+// Oyuncunun yeri ve WASD hareketi. 0x72 DungeonTileset II — knight_m sprite.
+using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
+using Microsoft.Xna.Framework.Input;
+
+namespace Outlast2D;
+
+public class Player
+{
+    public int GridX { get; private set; }
+    public int GridY { get; private set; }
+
+    private float _secondsSinceLastStep;
+    private const float SecondsBetweenSteps = 0.12f;
+
+    // tile_list_v1.7 — knight_m_idle / knight_m_run (16x28)
+    private static readonly Rectangle[] KnightMIdleFrames =
+    {
+        new Rectangle(128, 100, 16, 28),
+        new Rectangle(144, 100, 16, 28),
+        new Rectangle(160, 100, 16, 28),
+        new Rectangle(176, 100, 16, 28),
+    };
+
+    private static readonly Rectangle[] KnightMRunFrames =
+    {
+        new Rectangle(192, 100, 16, 28),
+        new Rectangle(208, 100, 16, 28),
+        new Rectangle(224, 100, 16, 28),
+        new Rectangle(240, 100, 16, 28),
+    };
+
+    private int _idleFrame;
+    private int _runFrame;
+    private float _idleAnimTimer;
+    private float _runAnimTimer;
+    private bool _wantsMove;
+    /// <summary>Son yatay yön: true = sola bakıyor (sprite yatay çevrilir).</summary>
+    private bool _faceLeft;
+
+    public Player(int startGridX, int startGridY)
+    {
+        GridX = startGridX;
+        GridY = startGridY;
+    }
+
+    public void Update(KeyboardState kb, TileMap map, float deltaSeconds, int keysHeld)
+    {
+        _secondsSinceLastStep += deltaSeconds;
+
+        _wantsMove =
+            kb.IsKeyDown(Keys.W) || kb.IsKeyDown(Keys.Up)
+            || kb.IsKeyDown(Keys.S) || kb.IsKeyDown(Keys.Down)
+            || kb.IsKeyDown(Keys.A) || kb.IsKeyDown(Keys.Left)
+            || kb.IsKeyDown(Keys.D) || kb.IsKeyDown(Keys.Right);
+
+        // Yatay yön (atlas tek yöne çizili; sol için aynalama)
+        if (kb.IsKeyDown(Keys.A) || kb.IsKeyDown(Keys.Left))
+            _faceLeft = true;
+        else if (kb.IsKeyDown(Keys.D) || kb.IsKeyDown(Keys.Right))
+            _faceLeft = false;
+
+        if (_wantsMove)
+        {
+            _runAnimTimer += deltaSeconds;
+            if (_runAnimTimer >= 0.07f)
+            {
+                _runAnimTimer = 0f;
+                _runFrame = (_runFrame + 1) % KnightMRunFrames.Length;
+            }
+        }
+        else
+        {
+            _idleAnimTimer += deltaSeconds;
+            if (_idleAnimTimer >= 0.18f)
+            {
+                _idleAnimTimer = 0f;
+                _idleFrame = (_idleFrame + 1) % KnightMIdleFrames.Length;
+            }
+        }
+
+        if (_secondsSinceLastStep >= SecondsBetweenSteps)
+        {
+            int newX = GridX;
+            int newY = GridY;
+
+            if (kb.IsKeyDown(Keys.W) || kb.IsKeyDown(Keys.Up))
+                newY -= 1;
+            else if (kb.IsKeyDown(Keys.S) || kb.IsKeyDown(Keys.Down))
+                newY += 1;
+            else if (kb.IsKeyDown(Keys.A) || kb.IsKeyDown(Keys.Left))
+                newX -= 1;
+            else if (kb.IsKeyDown(Keys.D) || kb.IsKeyDown(Keys.Right))
+                newX += 1;
+
+            if (newX != GridX || newY != GridY)
+            {
+                if (newX >= 0 && newX < map.WidthInTiles && newY >= 0 && newY < map.HeightInTiles)
+                {
+                    if (!map.BlocksPlayer(newX, newY, keysHeld))
+                    {
+                        GridX = newX;
+                        GridY = newY;
+                    }
+                }
+
+                _secondsSinceLastStep = 0f;
+            }
+        }
+    }
+
+    public void Draw(SpriteBatch spriteBatch, Texture2D characterAtlas, int tileSizePixels)
+    {
+        Rectangle src = _wantsMove ? KnightMRunFrames[_runFrame] : KnightMIdleFrames[_idleFrame];
+
+        float scale = tileSizePixels / 16f;
+        int destW = (int)(src.Width * scale);
+        int destH = (int)(src.Height * scale);
+
+        int px = GridX * tileSizePixels + (tileSizePixels - destW) / 2;
+        int py = GridY * tileSizePixels + tileSizePixels - destH;
+
+        var dest = new Rectangle(px, py, destW, destH);
+        var flip = _faceLeft ? SpriteEffects.FlipHorizontally : SpriteEffects.None;
+        spriteBatch.Draw(characterAtlas, dest, src, Color.White, 0f, Vector2.Zero, flip, 0f);
+    }
+}
