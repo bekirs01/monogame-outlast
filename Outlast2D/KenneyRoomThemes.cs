@@ -1,9 +1,9 @@
 namespace Outlast2D;
 
-/// <summary>Kenney Scribble Dungeons — her (rx,ry) odası için ayrı zemin + duvar PNG adları (64×64).</summary>
+/// <summary>Kenney Scribble Dungeons — для каждой (rx,ry) отдельные пол и стена PNG (64×64).</summary>
 public static class KenneyRoomThemes
 {
-    /// <summary>9 oda: (zemin dosya adı uzantısız, duvar dosya adı uzantısız).</summary>
+    /// <summary>9 комнат: (базовое имя пола без расширения, базовое имя стены без расширения).</summary>
     public static readonly (string FloorBase, string WallBase)[] RoomPairs =
     {
         ("tile", "wall_edge"),

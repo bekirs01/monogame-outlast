@@ -25,7 +25,7 @@ internal static class MapTestHelpers
     }
 
     /// <summary>Есть ли путь по клеткам, где игрок не блокируется (как <see cref="TileMap.BlocksPlayer"/>).</summary>
-    /// <param name="keysHeld">Çıkış kilesine (4) basılı tutulduğunda varsayılan 3 — hedefe ulaşılabilirlik testi için.</param>
+    /// <param name="keysHeld">При удержании у выхода (4) по умолчанию 3 — для теста достижимости цели.</param>
     internal static bool IsReachableForPlayer(TileMap map, int startX, int startY, int goalX, int goalY, int keysHeld = 3)
     {
         if (map.BlocksPlayer(startX, startY, keysHeld) || map.BlocksPlayer(goalX, goalY, keysHeld))

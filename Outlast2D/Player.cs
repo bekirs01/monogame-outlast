@@ -1,4 +1,4 @@
-// Oyuncunun yeri ve WASD hareketi. 0x72 DungeonTileset II — knight_m sprite.
+// Позиция игрока и управление WASD. 0x72 DungeonTileset II — спрайт knight_m.
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
@@ -35,7 +35,7 @@ public class Player
     private float _idleAnimTimer;
     private float _runAnimTimer;
     private bool _wantsMove;
-    /// <summary>Son yatay yön: true = sola bakıyor (sprite yatay çevrilir).</summary>
+    /// <summary>Горизонтальное направление: true = смотрит влево (спрайт отражён).</summary>
     private bool _faceLeft;
 
     public Player(int startGridX, int startGridY)
@@ -54,7 +54,7 @@ public class Player
             || kb.IsKeyDown(Keys.A) || kb.IsKeyDown(Keys.Left)
             || kb.IsKeyDown(Keys.D) || kb.IsKeyDown(Keys.Right);
 
-        // Yatay yön (atlas tek yöne çizili; sol için aynalama)
+        // Горизонталь (атлас в одну сторону; зеркалирование влево)
         if (kb.IsKeyDown(Keys.A) || kb.IsKeyDown(Keys.Left))
             _faceLeft = true;
         else if (kb.IsKeyDown(Keys.D) || kb.IsKeyDown(Keys.Right))

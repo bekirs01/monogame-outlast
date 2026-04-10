@@ -3,25 +3,25 @@ using System.Collections.Generic;
 
 namespace Outlast2D;
 
-/// <summary>Zor: 3×3 oda. Basit: 2×2 oda (aynı iç oda boyutu). Kenney görselleri TileMap çiziminde kullanılır.</summary>
+/// <summary>Сложная: сетка 3×3. Лёгкая: 2×2 (тот же размер комнаты внутри). Текстуры Kenney рисует TileMap.</summary>
 public static class MapData
 {
     public const int RoomInnerTiles = 17;
     public const int RoomStepTiles = RoomInnerTiles + 2;
     public const int TilesPerRoomSide = RoomStepTiles + 1;
 
-    /// <summary>Basit harita: iç oda kare sayısı ≈ zor haritanın yarısı (17→8).</summary>
+    /// <summary>Лёгкая карта: клеток внутри комнаты ≈ половина сложной (17→8).</summary>
     public const int RoomInnerTilesEasy = 8;
 
     public const int MazeSeed = 424242;
 
-    // 0 zemin, 1 duvar, 2 kapı, 3 sandık, 4 çıkış, 5 engel
+    // 0 пол, 1 стена, 2 дверь, 3 сундук, 4 выход, 5 препятствие
 
     public static DungeonMapResult CreateDungeonMap(int tileSizePixels, MapDifficulty difficulty = MapDifficulty.Hard)
     {
         int roomInner = difficulty == MapDifficulty.Easy ? RoomInnerTilesEasy : RoomInnerTiles;
         int step = roomInner + 2;
-        // Basit: 2×2 oda (4 oda, tam bağlantı); zor: 3×3.
+        // Лёгкая: сетка 2×2; сложная: 3×3.
         int roomsPerSide = difficulty == MapDifficulty.Easy ? 2 : 3;
 
         int startX = difficulty == MapDifficulty.Easy ? 4 : 8;
@@ -105,7 +105,7 @@ public static class MapData
         if (!TryPlaceExit(grid, mapW, mapH, rng, startX, startY, out int exitX, out int exitY))
         {
             if (!TryPlaceExit(grid, mapW, mapH, new Random(0), startX, startY, out exitX, out exitY))
-                throw new InvalidOperationException("Çıkış yeri bulunamadı.");
+                throw new InvalidOperationException("Место выхода не найдено.");
         }
 
         grid[exitX, exitY] = 4;
@@ -129,7 +129,7 @@ public static class MapData
         };
     }
 
-    /// <summary>Orta oda iç labirent merkezi — 2×2 ve 3×3 için (1,1); üzerine gelince tüm harita açılır.</summary>
+    /// <summary>Центр лабиринта средней комнаты — (1,1) для 2×2 и 3×3; при наступлении открывается вся карта.</summary>
     private static void GetMiddleRoomRevealCell(int step, int roomInner, int roomsPerSide, out int gx, out int gy)
     {
         int rx = roomsPerSide / 2;
@@ -328,7 +328,7 @@ public static class MapData
         }
     }
 
-    /// <summary>(8,8) ile aynı zemin+kapı bileşenindeki hücreler — çıkış burada olmalı.</summary>
+    /// <summary>Клетки той же связной области пола и дверей, что и старт (напр. 8,8) — выход должен быть здесь.</summary>
     private static bool[,] ReachableFloorAndDoorsMask(int[,] grid, int mapW, int mapH, int sx, int sy)
     {
         var vis = new bool[mapW, mapH];
@@ -414,7 +414,7 @@ public static class MapData
         return n;
     }
 
-    /// <summary>Üç sandık: zor modda köşegen (0,0),(1,1),(2,2); basit 2×2’de üç farklı oda.</summary>
+    /// <summary>Три сундука: в сложном режиме по диагонали (0,0),(1,1),(2,2); в лёгком 2×2 — в трёх разных комнатах.</summary>
     private static void PlaceChestsThreeRooms(
         int[,] grid,
         int mapW,

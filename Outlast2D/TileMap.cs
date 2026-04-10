@@ -18,10 +18,10 @@ public class TileMap
     public int ExitRoomIndexX { get; }
     public int ExitRoomIndexY { get; }
 
-    /// <summary>Oda başına adım (iç labirent + 2 kenar). Harita üretimiyle aynı olmalı.</summary>
+    /// <summary>Шаг на комнату (лабиринт внутри + 2 по краю). Должен совпадать с генерацией карты.</summary>
     public int RoomStepTiles { get; }
 
-    /// <summary>Kenar başına oda sayısı: basit 2 (2×2), zor 3 (3×3).</summary>
+    /// <summary>Комнат на сторону: лёгкая 2 (2×2), сложная 3 (3×3).</summary>
     public int RoomsPerSide { get; }
 
     public int TilesPerRoomSide => RoomStepTiles + 1;
@@ -69,8 +69,8 @@ public class TileMap
         return false;
     }
 
-    /// <param name="floorByRoom">9 adet — Kenney zemin (64×64).</param>
-    /// <param name="wallByRoom">9 adet — Kenney duvar.</param>
+    /// <param name="floorByRoom">9 шт. — пол Kenney (64×64).</param>
+    /// <param name="wallByRoom">9 шт. — стена Kenney.</param>
     public void Draw(
         SpriteBatch spriteBatch,
         Texture2D[] floorByRoom,

@@ -28,7 +28,7 @@ public class MapDataConstantsTests
     {
         int easyStep = MapData.RoomInnerTilesEasy + 2;
         Assert.Equal(10, easyStep);
-        // Basit: 2×2 oda → kenar başına 2 oda.
+        // Лёгкая сетка 2×2 → 2 комнаты на сторону.
         Assert.Equal(21, easyStep * 2 + 1);
     }
 }

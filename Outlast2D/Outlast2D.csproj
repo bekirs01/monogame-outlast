@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <EnableMGCBItems>false</EnableMGCBItems>
-    <!-- Debug: konsol açık kalsın (hata görünsün). Release: çift tıklayınca ekstra pencere olmasın -->
+    <!-- Debug: консоль видна (ошибки). Release: без лишнего окна при двойном щелчке -->
     <OutputType Condition="'$(Configuration)' == 'Debug'">Exe</OutputType>
     <OutputType Condition="'$(Configuration)' != 'Debug'">WinExe</OutputType>
     <TargetFramework>net8.0</TargetFramework>
@@ -10,7 +10,7 @@
     <TieredCompilation>false</TieredCompilation>
   </PropertyGroup>
   <PropertyGroup>
-    <!-- app.manifest yalnızca Windows içindir; macOS’ta gereksiz -->
+    <!-- app.manifest только для Windows; на macOS не нужен -->
     <ApplicationManifest Condition="$([MSBuild]::IsOSPlatform('windows'))">app.manifest</ApplicationManifest>
     <ApplicationIcon>Icon.ico</ApplicationIcon>
   </PropertyGroup>

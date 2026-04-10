@@ -1,4 +1,4 @@
-// Ana oyun: yükleme, güncelleme, çizim. Oda büyütme, harita açma, minimap burada.
+// Главный игровой цикл: загрузка, обновление, отрисовка. Масштаб комнаты, карта, мини-карта.
 using System;
 using System.IO;
 using Microsoft.Xna.Framework;
@@ -32,7 +32,7 @@ public class Game1 : Game
     private const float KeyFloatDurationSeconds = 0.55f;
     private bool _gameWon;
     private bool _mainMenu = true;
-    /// <summary>0 = Basit (küçük harita), 1 = Zor (büyük harita).</summary>
+    /// <summary>0 = лёгкая (маленькая карта), 1 = сложная (большая карта).</summary>
     private int _menuIndex;
     private bool _menuUpWasDown;
     private bool _menuDownWasDown;
@@ -52,14 +52,14 @@ public class Game1 : Game
     private int _revealMarkerTileX;
     private int _revealMarkerTileY;
     private RenderTarget2D _fullMapTarget;
-    /// <summary>Çarpımsal maske: merkez beyaz (harita görünsün), kenar siyah — küçük dairesel fener.</summary>
+    /// <summary>Мультипликативная маска: центр белый (карта видна), край чёрный — маленький круговой фонарь.</summary>
     private Texture2D _flashlightMultiplyRadial;
     private BlendState _multiplyBlend = null!;
-    /// <summary>Tam ekran çarpım maskesi (dışı siyah); küçük daire buraya çizilir, sonra tüm ekran harita ile çarpılır.</summary>
+    /// <summary>Полноэкранная маска умножения (снаружи чёрный); круг рисуется сюда, затем весь экран умножается на карту.</summary>
     private RenderTarget2D _flashlightMaskScreen = null!;
 
     private float _mapRevealTimer;
-    /// <summary>Orta odadaki işarete basılınca tüm 9 oda birlikte görünsün diye süre (saniye).</summary>
+    /// <summary>Время (сек.), пока на средней метке открыта вся карта.</summary>
     private const float MapRevealDurationSeconds = 4f;
     private bool _wasOnRevealMarkerLastFrame;
 
@@ -67,7 +67,7 @@ public class Game1 : Game
 
     private static readonly Color MiniMapBg = new Color(30, 30, 35);
     private static readonly Color MiniMapCell = new Color(55, 55, 60);
-    /// <summary>Çıkış kapısının bulunduğu oda — hedef bu yeşil karedir.</summary>
+    /// <summary>Комната с выходом — зелёная клетка на мини-карте.</summary>
     private static readonly Color MiniMapExit = new Color(40, 215, 95);
     private static readonly Color MiniMapExitBorder = new Color(180, 255, 130);
     private static readonly Color MiniMapPlayer = new Color(220, 60, 60);
@@ -110,7 +110,7 @@ public class Game1 : Game
         if (!File.Exists(fontPath))
             throw new FileNotFoundException("Не найден файл шрифта меню: " + fontPath);
         byte[] fontBytes = File.ReadAllBytes(fontPath);
-        // Rus menü metni + «·»: tam Kiril bloğu yerine tipik harf aralığı (atlas taşmasını önler).
+        // Меню на русском + «·»: типичный диапазон символов (меньше раздувания атласа).
         var fontBake = TtfFontBaker.Bake(
             fontBytes,
             24,
@@ -142,7 +142,7 @@ public class Game1 : Game
 
         string playerAtlasPath = Path.Combine(AppContext.BaseDirectory, "Content", "sprites", "0x72_DungeonTilesetII_v1.7.png");
         if (!File.Exists(playerAtlasPath))
-            throw new FileNotFoundException("Oyuncu sprite atlası bulunamadı. Beklenen yol: " + playerAtlasPath);
+            throw new FileNotFoundException("Атлас спрайта игрока не найден. Ожидаемый путь: " + playerAtlasPath);
         using (var fs = File.OpenRead(playerAtlasPath))
             _playerAtlas = Texture2D.FromStream(GraphicsDevice, fs);
 
@@ -245,7 +245,7 @@ public class Game1 : Game
     private Texture2D LoadTexture(string path)
     {
         if (!File.Exists(path))
-            throw new FileNotFoundException("Kenney dosyası bulunamadı: " + path);
+            throw new FileNotFoundException("Файл Kenney не найден: " + path);
         using var fs = File.OpenRead(path);
         return Texture2D.FromStream(GraphicsDevice, fs);
     }
@@ -340,7 +340,7 @@ public class Game1 : Game
         var pp2 = GraphicsDevice.PresentationParameters;
         Rectangle backR = GetBackButtonRect(pp2.BackBufferWidth, pp2.BackBufferHeight);
         MapMouseToBackBuffer(mouse, out int mx, out int my);
-        // Basma anında tetikle (release beklemek trackpad’de kaçırılabiliyor); önceki kare Released idi.
+        // Срабатывание по нажатию; отпускание на трекпаде может теряться; предыдущий кадр — Released.
         bool backPress = mouse.LeftButton == ButtonState.Pressed
             && _playMousePrev.LeftButton == ButtonState.Released;
         if (backPress && backR.Contains(mx, my))
@@ -461,8 +461,8 @@ public class Game1 : Game
             && _tileMap.GetTileId(x, y) == 4)
         {
             _gameWon = true;
-            Window.Title = "Outlast 2D — KAZANDIN!";
-            Console.WriteLine("KAZANDIN! Üç anahtar ile çıkışa ulaştın.");
+            Window.Title = "Outlast 2D — ПОБЕДА!";
+            Console.WriteLine("ПОБЕДА! Вы вышли с тремя ключами.");
             Console.Out.Flush();
         }
     }
@@ -526,7 +526,7 @@ public class Game1 : Game
         _spriteBatch.End();
 
         GraphicsDevice.SetRenderTarget(null);
-        // Fener modu: tam ekran siyah; oyuncu ekrandaki konumunda küçük daire içi görünür (çarpımsal maske).
+        // Режим фонаря: чёрный экран; видна лишь область у позиции игрока (мультипликативная маска).
         if (_mapRevealTimer > 0f)
             GraphicsDevice.Clear(new Color(22, 16, 28));
         else
@@ -550,7 +550,7 @@ public class Game1 : Game
         }
         else
         {
-            // Tek oda tam ekrana ölçeklenir; daire maskesi tam ekran RT’ye yazılır (dışı 0), sonra harita ile çarpılır — aksi halde küçük dikdörtgen dışı harita kalırdı.
+            // Одна комната на весь экран; маска пишется в полноэкранный RT (0 снаружи), затем умножается — иначе карта остаётся за пределами маски.
             ComputeFlashlightSourceRect(mapW, mapH, t, out Rectangle flashlightSrc);
             ComputeScaledDest(flashlightSrc.Width, flashlightSrc.Height, sw, sh, out Rectangle dest);
 
@@ -726,7 +726,7 @@ public class Game1 : Game
     }
 
     /// <summary>
-    /// Ekranda yalnızca oyuncunun bulunduğu tek oda (minimapteki bir kare); oda değişince kaynak dikdörtgen o odaya sıçrar.
+    /// На экране одна ячейка сетки (как на мини-карте); при смене комнаты прямоугольник источника перескакивает.
     /// </summary>
     private void ComputeFlashlightSourceRect(int mapW, int mapH, int tileSize, out Rectangle src)
     {
@@ -751,7 +751,7 @@ public class Game1 : Game
     }
 
     /// <summary>
-    /// SDL fare konumu bazen ClientBounds ölçüsünde; HUD ve çizim BackBuffer pikselinde. macOS Retina’da eşleşmezse düğme tıklanmıyor.
+    /// Координаты мыши SDL иногда в ClientBounds; интерфейс в пикселях BackBuffer. На Retina несовпадение — кнопка не срабатывает.
     /// </summary>
     private void MapMouseToBackBuffer(MouseState mouse, out int bx, out int by)
     {
@@ -798,7 +798,7 @@ public class Game1 : Game
             new Color(230, 228, 242));
     }
 
-    /// <summary>Stok görseldeki gibi yumuşak kenarlı radyal geçiş (0–1).</summary>
+    /// <summary>Плавный радиальный переход (0–1), как на референсном изображении.</summary>
     private static float Smoothstep01(float t)
     {
         if (t <= 0f) return 0f;
@@ -807,7 +807,7 @@ public class Game1 : Game
     }
 
     /// <summary>
-    /// Çarpımsal karıştırma için: merkez RGB≈1 (harita korunur), kenar 0 (siyah). Üst üste çizilir: çıktı = harita × maske.
+    /// Для смешения multiply: центр RGB≈1 (карта сохраняется), край 0 (чёрный). Результат = карта × маска.
     /// </summary>
     private static Texture2D CreateFlashlightMultiplyRadialTexture(GraphicsDevice device, int size)
     {
@@ -870,7 +870,7 @@ public class Game1 : Game
             }
         }
 
-        // Çıkış odası: ince çerçeve — yeşil kare = gidilecek çıkış bölgesi.
+        // Выход из комнаты: тонкая рамка — зелёный квадрат = цель.
         {
             var exitOuter = new Rectangle(bx + ex * cell - 1, by + ey * cell - 1, cell, cell);
             _spriteBatch.Draw(_pixelTexture, exitOuter, MiniMapExitBorder);

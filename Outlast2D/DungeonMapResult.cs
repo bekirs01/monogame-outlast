@@ -1,6 +1,6 @@
 namespace Outlast2D;
 
-/// <summary>Üretilen harita ve minimap için çıkış oda indeksi.</summary>
+/// <summary>Сгенерированная карта и индекс комнаты выхода для мини-карты.</summary>
 public sealed class DungeonMapResult
 {
     public required TileMap TileMap { get; init; }

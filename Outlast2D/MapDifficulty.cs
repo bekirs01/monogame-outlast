@@ -1,6 +1,6 @@
 namespace Outlast2D;
 
-/// <summary>Zor = büyük oda (17 iç kare); basit = yarı boy (~8 iç kare).</summary>
+/// <summary>Сложная = большая комната (17 клеток внутри); лёгкая ≈ половина (~8 клеток).</summary>
 public enum MapDifficulty
 {
     Easy,
