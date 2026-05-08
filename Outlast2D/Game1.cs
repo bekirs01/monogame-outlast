@@ -87,6 +87,8 @@ public class Game1 : Game
     private float _bulletTween01;
     private const float BulletCrossTileSeconds = 0.09f;
 
+    private bool _speedTokenCollected;
+
     private static readonly Color RevealMarkerColor = new Color(255, 230, 80);
 
     private static readonly Color MiniMapBg = new Color(30, 30, 35);
@@ -223,6 +225,7 @@ public class Game1 : Game
         _ammoRemaining = 0;
         _bulletActive = false;
         _spaceWasDown = false;
+        _speedTokenCollected = false;
         _player = new Player(built.StartGridX, built.StartGridY);
         _keysCollected = 0;
         _gameWon = false;
@@ -341,7 +344,7 @@ public class Game1 : Game
 
         if (!_gameWon)
         {
-            _player.Update(kb, _tileMap, dt, _keysCollected);
+            _player.Update(kb, _tileMap, dt, _keysCollected, _speedTokenCollected ? 2f : 1f);
             UpdateBullet(dt);
             TryFireBullet(kb);
             UpdateChestKeysAndWin(dt);
@@ -513,6 +516,9 @@ public class Game1 : Game
                         break;
                     case ChestRewardKind.Ammo:
                         _ammoRemaining = DungeonAtlasSprites.AmmoPerAmmoChest;
+                        break;
+                    case ChestRewardKind.SpeedToken:
+                        _speedTokenCollected = true;
                         break;
                 }
 

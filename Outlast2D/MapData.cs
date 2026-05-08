@@ -72,7 +72,7 @@ public static class MapData
         grid[exitX, exitY] = 4;
 
         var chestRewards = new ChestRewardKind[mapW, mapH];
-        PlaceChestsFiveWithKinds(
+        PlaceChestsWithKinds(
             grid,
             chestRewards,
             mapW,
@@ -498,13 +498,14 @@ public static class MapData
         return n;
     }
 
-    private const int TotalGameplayChests = 5;
+    private const int TotalGameplayChests = 6;
     private const int KeyChestTarget = 2;
     private const int LanternChestTarget = 2;
     private const int AmmoChestTarget = 1;
+    private const int SpeedChestTarget = 1;
 
-    /// <summary>Beş sandık: iki anahtar, iki fener, bir mermi kasası (mermi sandığı görünüş olarak Kasayarak).</summary>
-    private static void PlaceChestsFiveWithKinds(
+    /// <summary>Altı sandık: iki anahtar, iki fener, bir mermi, bir hız jetonu.</summary>
+    private static void PlaceChestsWithKinds(
         int[,] grid,
         ChestRewardKind[,] chestRewards,
         int mapW,
@@ -531,6 +532,7 @@ public static class MapData
             ? stackalloc[]
             {
                 (0, 0, ChestRewardKind.Key),
+                (0, 0, ChestRewardKind.SpeedToken),
                 (1, 1, ChestRewardKind.Key),
                 (1, 0, ChestRewardKind.Lantern),
                 (0, 1, ChestRewardKind.Lantern),
@@ -543,11 +545,13 @@ public static class MapData
                 (2, 2, ChestRewardKind.Lantern),
                 (2, 0, ChestRewardKind.Lantern),
                 (0, 2, ChestRewardKind.Ammo),
+                (1, 0, ChestRewardKind.SpeedToken),
             };
 
         int keysPlaced = 0;
         int lanternsPlaced = 0;
         int ammoPlaced = 0;
+        int speedPlaced = 0;
 
         for (int i = 0; i < plan.Length; i++)
         {
@@ -568,14 +572,18 @@ public static class MapData
                 case ChestRewardKind.Ammo:
                     ammoPlaced++;
                     break;
+                case ChestRewardKind.SpeedToken:
+                    speedPlaced++;
+                    break;
             }
         }
 
         int needKeys = KeyChestTarget - keysPlaced;
         int needLanterns = LanternChestTarget - lanternsPlaced;
         int needAmmo = AmmoChestTarget - ammoPlaced;
-        int placedTotal = keysPlaced + lanternsPlaced + ammoPlaced;
-        int needTotal = needKeys + needLanterns + needAmmo;
+        int needSpeed = SpeedChestTarget - speedPlaced;
+        int placedTotal = keysPlaced + lanternsPlaced + ammoPlaced + speedPlaced;
+        int needTotal = needKeys + needLanterns + needAmmo + needSpeed;
         if (needTotal > 0 && placedTotal < TotalGameplayChests)
             PlaceChestsInDeadEndsFallback(
                 grid,
@@ -591,7 +599,8 @@ public static class MapData
                 revealY,
                 needKeys,
                 needLanterns,
-                needAmmo);
+                needAmmo,
+                needSpeed);
     }
 
     private static bool TryPlaceChestInRoom(
@@ -666,9 +675,10 @@ public static class MapData
         int revealY,
         int needMoreKeys,
         int needMoreLanterns,
-        int needMoreAmmo)
+        int needMoreAmmo,
+        int needMoreSpeed)
     {
-        int needMore = needMoreKeys + needMoreLanterns + needMoreAmmo;
+        int needMore = needMoreKeys + needMoreLanterns + needMoreAmmo + needMoreSpeed;
         if (needMore <= 0)
             return;
 
@@ -756,8 +766,10 @@ public static class MapData
                 rk = ChestRewardKind.Key;
             else if (placed < needMoreKeys + needMoreLanterns)
                 rk = ChestRewardKind.Lantern;
-            else
+            else if (placed < needMoreKeys + needMoreLanterns + needMoreAmmo)
                 rk = ChestRewardKind.Ammo;
+            else
+                rk = ChestRewardKind.SpeedToken;
             chestRewards[px, py] = rk;
             placed++;
         }

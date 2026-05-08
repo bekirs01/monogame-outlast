@@ -1,4 +1,5 @@
 // Позиция игрока и управление WASD. 0x72 DungeonTileset II — спрайт knight_m.
+using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
@@ -55,9 +56,11 @@ public class Player
         GridY = gridY;
     }
 
-    public void Update(KeyboardState kb, TileMap map, float deltaSeconds, int keysHeld)
+    /// <param name="moveSpeedMultiplier">1 = varsayılan; 2 = iki kat hızlı grid adımı.</param>
+    public void Update(KeyboardState kb, TileMap map, float deltaSeconds, int keysHeld, float moveSpeedMultiplier = 1f)
     {
         _secondsSinceLastStep += deltaSeconds;
+        float interval = SecondsBetweenSteps / Math.Max(moveSpeedMultiplier, 0.01f);
 
         _wantsMove =
             kb.IsKeyDown(Keys.W) || kb.IsKeyDown(Keys.Up)
@@ -90,7 +93,7 @@ public class Player
             }
         }
 
-        if (_secondsSinceLastStep >= SecondsBetweenSteps)
+        if (_secondsSinceLastStep >= interval)
         {
             int prevX = GridX;
             int prevY = GridY;

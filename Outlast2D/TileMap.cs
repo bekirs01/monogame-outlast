@@ -183,6 +183,16 @@ public class TileMap
                             tint = Color.Lerp(Color.White, tint, chestAnimT01);
                         spriteBatch.Draw(obstacleCrate, inner, null, tint);
                     }
+                    else if (chestRewards[x, y] == ChestRewardKind.SpeedToken)
+                    {
+                        var src = DungeonAtlasSprites.ChestFrameForDraw(opened, animating, chestAnimT01);
+                        Color tint = opened
+                            ? Color.Lerp(new Color(210, 210, 210), new Color(140, 200, 215), 0.55f)
+                            : Color.Lerp(Color.White, new Color(110, 215, 235), 0.38f);
+                        if (animating)
+                            tint = Color.Lerp(Color.Lerp(Color.White, new Color(110, 215, 235), 0.38f), tint, chestAnimT01);
+                        spriteBatch.Draw(dungeonAtlas, inner, src, tint);
+                    }
                     else
                     {
                         var src = DungeonAtlasSprites.ChestFrameForDraw(opened, animating, chestAnimT01);

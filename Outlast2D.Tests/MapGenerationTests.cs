@@ -21,16 +21,17 @@ public class MapGenerationTests
     }
 
     [Fact]
-    public void CreateDungeonMap_has_single_exit_five_chests_reward_mix_and_connectivity()
+    public void CreateDungeonMap_has_single_exit_six_chests_reward_mix_and_connectivity()
     {
         var result = MapData.CreateDungeonMap(16);
         var map = result.TileMap;
 
         Assert.Equal(1, MapTestHelpers.CountTilesWithId(map, 4));
-        Assert.Equal(5, MapTestHelpers.CountTilesWithId(map, 3));
+        Assert.Equal(6, MapTestHelpers.CountTilesWithId(map, 3));
 
         int lanterns = 0;
         int ammoChests = 0;
+        int speedChests = 0;
         for (int y = 0; y < map.HeightInTiles; y++)
         {
             for (int x = 0; x < map.WidthInTiles; x++)
@@ -45,12 +46,16 @@ public class MapGenerationTests
                     case ChestRewardKind.Ammo:
                         ammoChests++;
                         break;
+                    case ChestRewardKind.SpeedToken:
+                        speedChests++;
+                        break;
                 }
             }
         }
 
         Assert.Equal(2, lanterns);
         Assert.Equal(1, ammoChests);
+        Assert.Equal(1, speedChests);
 
         // Полная связность пола не гарантируется генератором; важно, чтобы выход был достижим из старта.
         var exitCell = MapTestHelpers.FindFirstTileWithId(map, 4);
@@ -76,11 +81,11 @@ public class MapGenerationTests
     }
 
     [Fact]
-    public void CreateDungeonMap_easy_has_exit_reachable_and_five_chests()
+    public void CreateDungeonMap_easy_has_exit_reachable_and_six_chests()
     {
         var result = MapData.CreateDungeonMap(16, MapDifficulty.Easy);
         var map = result.TileMap;
-        Assert.Equal(5, MapTestHelpers.CountTilesWithId(map, 3));
+        Assert.Equal(6, MapTestHelpers.CountTilesWithId(map, 3));
         Assert.Equal(1, MapTestHelpers.CountTilesWithId(map, 4));
         var exitCell = MapTestHelpers.FindFirstTileWithId(map, 4);
         Assert.NotNull(exitCell);
@@ -88,7 +93,7 @@ public class MapGenerationTests
     }
 
     [Fact]
-    public void CreateDungeonMap_places_five_chests_in_hard_map()
+    public void CreateDungeonMap_places_six_chests_in_hard_map()
     {
         var map = MapData.CreateDungeonMap(16).TileMap;
         var rooms = new System.Collections.Generic.HashSet<(int rx, int ry)>();
@@ -105,7 +110,7 @@ public class MapGenerationTests
         }
 
         Assert.True(rooms.Count >= 4);
-        Assert.Equal(5, MapTestHelpers.CountTilesWithId(map, 3));
+        Assert.Equal(6, MapTestHelpers.CountTilesWithId(map, 3));
     }
 
     [Fact]
