@@ -35,8 +35,8 @@ public class TileMapLogicTests
         var map = new TileMap(g, 16, 0, 0, MapData.RoomStepTiles);
 
         Assert.True(map.BlocksPlayer(2, 2, 0));
-        Assert.True(map.BlocksPlayer(2, 2, 2));
-        Assert.False(map.BlocksPlayer(2, 2, 3));
+        Assert.True(map.BlocksPlayer(2, 2, 1));
+        Assert.False(map.BlocksPlayer(2, 2, DungeonAtlasSprites.KeysToWin));
     }
 
     [Theory]

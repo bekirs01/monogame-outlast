@@ -6,7 +6,7 @@ namespace Outlast2D;
 /// <summary>0x72 DungeonTilesetII_v1.7 — координаты tile_list_v1.7.</summary>
 public static class DungeonAtlasSprites
 {
-    public const int KeysToWin = 3;
+    public const int KeysToWin = 2;
 
     public static readonly Rectangle ChestFullClosed = new Rectangle(304, 416, 16, 16);
     public static readonly Rectangle[] ChestFullOpenFrames =

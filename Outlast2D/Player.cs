@@ -44,6 +44,13 @@ public class Player
         GridY = startGridY;
     }
 
+    /// <summary>Harita modülleri yer değiştirdikten sonra ızgara konumu güncellenir.</summary>
+    public void SetGridPosition(int gridX, int gridY)
+    {
+        GridX = gridX;
+        GridY = gridY;
+    }
+
     public void Update(KeyboardState kb, TileMap map, float deltaSeconds, int keysHeld)
     {
         _secondsSinceLastStep += deltaSeconds;

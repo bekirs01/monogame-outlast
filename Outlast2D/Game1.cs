@@ -21,6 +21,9 @@ public class Game1 : Game
     private TileMap _tileMap;
     private Player _player;
     private bool[,] _chestOpened;
+    private bool[,] _chestGrantsLantern = null!;
+    /// <summary>0–2: her biri bir fener sandığı ödülü.</summary>
+    private int _lanternUpgradesCollected;
     private int _animChestX = -1;
     private int _animChestY = -1;
     private float _chestAnimT;
@@ -62,6 +65,15 @@ public class Game1 : Game
     /// <summary>Время (сек.), пока на средней метке открыта вся карта.</summary>
     private const float MapRevealDurationSeconds = 4f;
     private bool _wasOnRevealMarkerLastFrame;
+
+    /// <summary>Zor (3×3) modunda her tur 300 sn; süre dolunca modüller karışır.</summary>
+    private const float ShuffleRoundDurationSeconds = 300f;
+    private MapDifficulty _currentDifficulty;
+    private float _shuffleRoundSecondsRemaining = ShuffleRoundDurationSeconds;
+    private Random _shuffleRng = new Random();
+    /// <summary>M ile tam harita (ekrandaki gibi tüm ızgara).</summary>
+    private bool _manualFullMapView;
+    private bool _mKeyWasDown;
 
     private static readonly Color RevealMarkerColor = new Color(255, 230, 80);
 
@@ -194,6 +206,8 @@ public class Game1 : Game
             DepthFormat.None);
 
         _chestOpened = new bool[_tileMap.WidthInTiles, _tileMap.HeightInTiles];
+        _chestGrantsLantern = built.ChestGrantsLantern;
+        _lanternUpgradesCollected = 0;
         _player = new Player(built.StartGridX, built.StartGridY);
         _keysCollected = 0;
         _gameWon = false;
@@ -213,6 +227,11 @@ public class Game1 : Game
 
         _mainMenu = false;
         _playMousePrev = default;
+        _currentDifficulty = difficulty;
+        _shuffleRoundSecondsRemaining = ShuffleRoundDurationSeconds;
+        _shuffleRng = new Random();
+        _manualFullMapView = false;
+        _mKeyWasDown = false;
         Window.Title = difficulty == MapDifficulty.Hard ? "Outlast 2D — сложный" : "Outlast 2D — лёгкий";
     }
 
@@ -239,6 +258,7 @@ public class Game1 : Game
         _mainMenu = true;
         _gameWon = false;
         _mapRevealTimer = 0f;
+        _manualFullMapView = false;
         Window.Title = "Outlast 2D";
     }
 
@@ -308,6 +328,27 @@ public class Game1 : Game
         {
             _player.Update(kb, _tileMap, dt, _keysCollected);
             UpdateChestKeysAndWin(dt);
+        }
+
+        bool mDown = kb.IsKeyDown(Keys.M);
+        if (mDown && !_mKeyWasDown)
+            _manualFullMapView = !_manualFullMapView;
+        _mKeyWasDown = mDown;
+
+        if (!_gameWon)
+        {
+            _shuffleRoundSecondsRemaining -= dt;
+            if (_shuffleRoundSecondsRemaining <= 0f)
+            {
+                _shuffleRoundSecondsRemaining = ShuffleRoundDurationSeconds;
+                if (_currentDifficulty == MapDifficulty.Hard)
+                {
+                    RoomGridShuffle.TryShuffle(_tileMap, _chestOpened, _chestGrantsLantern, _player, ref _revealMarkerTileX, ref _revealMarkerTileY, _shuffleRng);
+                    _animChestX = -1;
+                    _animChestY = -1;
+                    _chestAnimT = 0f;
+                }
+            }
         }
 
         if (_keyFloatT >= 0f)
@@ -438,12 +479,22 @@ public class Game1 : Game
             if (_chestAnimT >= 1f)
             {
                 _chestOpened[x, y] = true;
-                _keysCollected++;
-                if (_keysCollected > DungeonAtlasSprites.KeysToWin)
-                    _keysCollected = DungeonAtlasSprites.KeysToWin;
-                _keyFloatGx = x;
-                _keyFloatGy = y;
-                _keyFloatT = 0f;
+                bool lantern = _chestGrantsLantern[x, y];
+                if (lantern)
+                {
+                    if (_lanternUpgradesCollected < 2)
+                        _lanternUpgradesCollected++;
+                }
+                else
+                {
+                    _keysCollected++;
+                    if (_keysCollected > DungeonAtlasSprites.KeysToWin)
+                        _keysCollected = DungeonAtlasSprites.KeysToWin;
+                    _keyFloatGx = x;
+                    _keyFloatGy = y;
+                    _keyFloatT = 0f;
+                }
+
                 _chestAnimT = 0f;
                 _animChestX = -1;
                 _animChestY = -1;
@@ -462,7 +513,7 @@ public class Game1 : Game
         {
             _gameWon = true;
             Window.Title = "Outlast 2D — ПОБЕДА!";
-            Console.WriteLine("ПОБЕДА! Вы вышли с тремя ключами.");
+            Console.WriteLine("ПОБЕДА! Вы вышли с двумя ключами.");
             Console.Out.Flush();
         }
     }
@@ -527,7 +578,7 @@ public class Game1 : Game
 
         GraphicsDevice.SetRenderTarget(null);
         // Режим фонаря: чёрный экран; видна лишь область у позиции игрока (мультипликативная маска).
-        if (_mapRevealTimer > 0f)
+        if (_mapRevealTimer > 0f || _manualFullMapView)
             GraphicsDevice.Clear(new Color(22, 16, 28));
         else
             GraphicsDevice.Clear(Color.Black);
@@ -535,12 +586,13 @@ public class Game1 : Game
         int sw = GraphicsDevice.PresentationParameters.BackBufferWidth;
         int sh = GraphicsDevice.PresentationParameters.BackBufferHeight;
 
-        if (_mapRevealTimer > 0f)
+        if (_mapRevealTimer > 0f || _manualFullMapView)
         {
             _spriteBatch.Begin(samplerState: SamplerState.PointClamp);
             var src = new Rectangle(0, 0, mapW, mapH);
             ComputeScaledDest(src.Width, src.Height, sw, sh, out Rectangle dest);
             _spriteBatch.Draw(_fullMapTarget, dest, src, Color.White);
+            DrawRoundTimer(sw, sh);
             DrawMiniMapHint();
             DrawKeysHud(sw, sh);
             DrawBackToMapButton(sw, sh);
@@ -552,7 +604,7 @@ public class Game1 : Game
         {
             // Одна комната на весь экран; маска пишется в полноэкранный RT (0 снаружи), затем умножается — иначе карта остаётся за пределами маски.
             ComputeFlashlightSourceRect(mapW, mapH, t, out Rectangle flashlightSrc);
-            ComputeScaledDest(flashlightSrc.Width, flashlightSrc.Height, sw, sh, out Rectangle dest);
+            ComputeScaledDestFlashlightZoom(flashlightSrc.Width, flashlightSrc.Height, sw, sh, out Rectangle dest);
 
             float pCx = (_player.GridX + 0.5f) * t;
             float pCy = (_player.GridY + 0.5f) * t;
@@ -560,9 +612,10 @@ public class Game1 : Game
 
             float tilesW = flashlightSrc.Width / (float)t;
             float pxPerTile = dest.Width / tilesW;
-            const float flashlightDiameterTiles = 9f;
+            float flashlightDiameterTiles = GetFlashlightDiameterTiles();
             float diameter = flashlightDiameterTiles * pxPerTile;
-            float radius = Math.Clamp(diameter * 0.5f, 40f, Math.Min(sw, sh) * 0.48f);
+            float maxRadiusCap = Math.Min(sw, sh) * (0.46f + _lanternUpgradesCollected * 0.11f);
+            float radius = Math.Clamp(diameter * 0.5f, 40f, maxRadiusCap);
             int d = Math.Max(8, (int)Math.Ceiling(radius * 2f));
             var maskDest = new Rectangle(
                 (int)Math.Round(scrX - d * 0.5f),
@@ -597,6 +650,7 @@ public class Game1 : Game
             _spriteBatch.End();
 
             _spriteBatch.Begin(samplerState: SamplerState.PointClamp);
+            DrawRoundTimer(sw, sh);
             DrawMiniMapHint();
             DrawKeysHud(sw, sh);
             DrawBackToMapButton(sw, sh);
@@ -606,6 +660,22 @@ public class Game1 : Game
         }
 
         base.Draw(gameTime);
+    }
+
+    private void DrawRoundTimer(int screenW, int screenH)
+    {
+        if (_menuFont == null)
+            return;
+
+        int totalSec = Math.Max(0, (int)Math.Ceiling(_shuffleRoundSecondsRemaining));
+        int mm = totalSec / 60;
+        int ss = totalSec % 60;
+        string text = $"{mm}:{ss:D2}";
+        Vector2 m = _menuFont.MeasureString(text);
+        float x = (screenW - m.X) * 0.5f;
+        float y = 12f;
+        _spriteBatch.Draw(_pixelTexture, new Rectangle((int)x - 6, (int)y - 4, (int)m.X + 12, (int)m.Y + 8), new Color(18, 16, 24, 220));
+        _spriteBatch.DrawString(_menuFont, text, new Vector2(x, y), new Color(255, 230, 200));
     }
 
     private void DrawKeyFloatPickup(int tileSizePixels)
@@ -706,6 +776,16 @@ public class Game1 : Game
         sy = dest.Y + ry * dest.Height;
     }
 
+    private float GetFlashlightDiameterTiles()
+    {
+        return _lanternUpgradesCollected switch
+        {
+            0 => 9f,
+            1 => 18f,
+            _ => 24f,
+        };
+    }
+
     private static void ComputeScaledDest(int srcW, int srcH, int screenW, int screenH, out Rectangle dest)
     {
         int ix = screenW / srcW;
@@ -723,6 +803,18 @@ public class Game1 : Game
         int dwf = Math.Max(1, (int)Math.Floor(srcW * f));
         int dhf = Math.Max(1, (int)Math.Floor(srcH * f));
         dest = new Rectangle((screenW - dwf) / 2, (screenH - dhf) / 2, dwf, dhf);
+    }
+
+    /// <summary>Fener modunda oda görünümünü ekranı daha çok dolduracak şekilde yakınlaştırır (M tam haritayı etkilemez).</summary>
+    private static void ComputeScaledDestFlashlightZoom(int srcW, int srcH, int screenW, int screenH, out Rectangle dest)
+    {
+        const float FillFactor = 0.96f;
+        float sx = screenW * FillFactor / srcW;
+        float sy = screenH * FillFactor / srcH;
+        float scale = Math.Min(sx, sy);
+        int dw = Math.Max(1, (int)Math.Round(srcW * scale));
+        int dh = Math.Max(1, (int)Math.Round(srcH * scale));
+        dest = new Rectangle((screenW - dw) / 2, (screenH - dh) / 2, dw, dh);
     }
 
     /// <summary>

@@ -21,13 +21,25 @@ public class MapGenerationTests
     }
 
     [Fact]
-    public void CreateDungeonMap_has_single_exit_three_chests_and_connectivity()
+    public void CreateDungeonMap_has_single_exit_four_chests_and_connectivity()
     {
         var result = MapData.CreateDungeonMap(16);
         var map = result.TileMap;
 
         Assert.Equal(1, MapTestHelpers.CountTilesWithId(map, 4));
-        Assert.Equal(3, MapTestHelpers.CountTilesWithId(map, 3));
+        Assert.Equal(4, MapTestHelpers.CountTilesWithId(map, 3));
+
+        int lanterns = 0;
+        for (int y = 0; y < map.HeightInTiles; y++)
+        {
+            for (int x = 0; x < map.WidthInTiles; x++)
+            {
+                if (map.GetTileId(x, y) == 3 && result.ChestGrantsLantern[x, y])
+                    lanterns++;
+            }
+        }
+
+        Assert.Equal(2, lanterns);
 
         // Полная связность пола не гарантируется генератором; важно, чтобы выход был достижим из старта.
         var exitCell = MapTestHelpers.FindFirstTileWithId(map, 4);
@@ -53,11 +65,11 @@ public class MapGenerationTests
     }
 
     [Fact]
-    public void CreateDungeonMap_easy_has_exit_reachable_and_three_chests()
+    public void CreateDungeonMap_easy_has_exit_reachable_and_four_chests()
     {
         var result = MapData.CreateDungeonMap(16, MapDifficulty.Easy);
         var map = result.TileMap;
-        Assert.Equal(3, MapTestHelpers.CountTilesWithId(map, 3));
+        Assert.Equal(4, MapTestHelpers.CountTilesWithId(map, 3));
         Assert.Equal(1, MapTestHelpers.CountTilesWithId(map, 4));
         var exitCell = MapTestHelpers.FindFirstTileWithId(map, 4);
         Assert.NotNull(exitCell);
@@ -65,7 +77,7 @@ public class MapGenerationTests
     }
 
     [Fact]
-    public void CreateDungeonMap_places_three_chests_in_three_distinct_rooms()
+    public void CreateDungeonMap_places_four_chests_in_four_distinct_rooms_hard()
     {
         var map = MapData.CreateDungeonMap(16).TileMap;
         var rooms = new System.Collections.Generic.HashSet<(int rx, int ry)>();
@@ -81,8 +93,8 @@ public class MapGenerationTests
             }
         }
 
-        Assert.Equal(3, rooms.Count);
-        Assert.Equal(3, MapTestHelpers.CountTilesWithId(map, 3));
+        Assert.Equal(4, rooms.Count);
+        Assert.Equal(4, MapTestHelpers.CountTilesWithId(map, 3));
     }
 
     [Fact]

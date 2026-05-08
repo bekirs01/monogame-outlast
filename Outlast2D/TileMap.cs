@@ -6,7 +6,7 @@ namespace Outlast2D;
 
 public class TileMap
 {
-    private readonly int[,] _tiles;
+    private int[,] _tiles;
 
     public int WidthInTiles { get; }
     public int HeightInTiles { get; }
@@ -15,8 +15,8 @@ public class TileMap
     public int WidthPixels => WidthInTiles * TileSizePixels;
     public int HeightPixels => HeightInTiles * TileSizePixels;
 
-    public int ExitRoomIndexX { get; }
-    public int ExitRoomIndexY { get; }
+    public int ExitRoomIndexX { get; private set; }
+    public int ExitRoomIndexY { get; private set; }
 
     /// <summary>Шаг на комнату (лабиринт внутри + 2 по краю). Должен совпадать с генерацией карты.</summary>
     public int RoomStepTiles { get; }
@@ -36,6 +36,51 @@ public class TileMap
         ExitRoomIndexY = exitRoomIndexY;
         RoomStepTiles = roomStepTiles;
         RoomsPerSide = roomsPerSide;
+    }
+
+    public int[,] CloneTiles()
+    {
+        int w = WidthInTiles;
+        int h = HeightInTiles;
+        var copy = new int[w, h];
+        for (int y = 0; y < h; y++)
+        {
+            for (int x = 0; x < w; x++)
+                copy[x, y] = _tiles[x, y];
+        }
+
+        return copy;
+    }
+
+    public void ReplaceTiles(int[,] newTiles)
+    {
+        if (newTiles.GetLength(0) != WidthInTiles || newTiles.GetLength(1) != HeightInTiles)
+            throw new ArgumentException("Tile grid boyutu uyuşmuyor.");
+        _tiles = newTiles;
+        RefreshExitRoomIndices();
+    }
+
+    private void RefreshExitRoomIndices()
+    {
+        for (int y = 0; y < HeightInTiles; y++)
+        {
+            for (int x = 0; x < WidthInTiles; x++)
+            {
+                if (_tiles[x, y] != 4)
+                    continue;
+                GetRoomIndexForTile(x, y, out int rx, out int ry);
+                ExitRoomIndexX = rx;
+                ExitRoomIndexY = ry;
+                return;
+            }
+        }
+    }
+
+    /// <summary>Modül karışımından sonra oyuncu / harita işareti hücresini yürünebilir yap (duvar üstünde kalmayı önler).</summary>
+    internal void EnsureWalkableAfterShuffle(int playerGx, int playerGy, int revealGx, int revealGy)
+    {
+        MapData.EnsureFloor(_tiles, playerGx, playerGy);
+        MapData.EnsureFloor(_tiles, revealGx, revealGy);
     }
 
     public void GetRoomIndexForTile(int gridX, int gridY, out int roomX, out int roomY)

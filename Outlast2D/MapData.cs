@@ -30,7 +30,6 @@ public static class MapData
 
         int mapW = step * roomsPerSide + 1;
         int mapH = step * roomsPerSide + 1;
-        int mid = (roomInner + 1) / 2;
 
         var grid = new int[mapW, mapH];
         for (int y = 0; y < mapH; y++)
@@ -48,6 +47,95 @@ public static class MapData
                 CarveRoomMaze(grid, ox, oy, roomInner, new Random(GetRoomMazeSeed(rx, ry)));
             }
         }
+
+        ApplyInterRoomConnections(grid, roomInner, roomsPerSide);
+
+        // Zor harita: komşu oda kapıları ile iç labirent arasında mutlaka yürünebilir koridor olsun;
+        // randımanlı engeller kapı–sandık hattını sık sık kesiyordu.
+        if (difficulty == MapDifficulty.Hard)
+            EnsureHardRoomPortalLinks(grid, roomInner, step, roomsPerSide);
+
+        EnsureFloor(grid, startX, startY);
+        EnsureFloor(grid, revealX, revealY);
+
+        int worldSeed = unchecked(Environment.TickCount ^ (int)(DateTime.UtcNow.Ticks & 0x7FFFFFFF));
+        var rng = new Random(worldSeed);
+
+        PlaceRandomObstaclesPreservingConnectivity(grid, mapW, mapH, rng, startX, startY, revealX, revealY, difficulty);
+
+        if (!TryPlaceExit(grid, mapW, mapH, rng, startX, startY, out int exitX, out int exitY))
+        {
+            if (!TryPlaceExit(grid, mapW, mapH, new Random(0), startX, startY, out exitX, out exitY))
+                throw new InvalidOperationException("Место выхода не найдено.");
+        }
+
+        grid[exitX, exitY] = 4;
+
+        var chestGrantsLantern = new bool[mapW, mapH];
+        PlaceChestsFourWithKinds(
+            grid,
+            chestGrantsLantern,
+            mapW,
+            mapH,
+            rng,
+            roomInner,
+            step,
+            difficulty,
+            startX,
+            startY,
+            exitX,
+            exitY,
+            revealX,
+            revealY);
+
+        GetRoomIndex(exitX, exitY, step, roomsPerSide, out int exitRoomX, out int exitRoomY);
+
+        var tileData = (int[,])grid.Clone();
+        var tileMap = new TileMap(tileData, tileSizePixels, exitRoomX, exitRoomY, step, roomsPerSide);
+
+        return new DungeonMapResult
+        {
+            TileMap = tileMap,
+            ExitRoomIndexX = exitRoomX,
+            ExitRoomIndexY = exitRoomY,
+            StartGridX = startX,
+            StartGridY = startY,
+            RevealMarkerGridX = revealX,
+            RevealMarkerGridY = revealY,
+            ChestGrantsLantern = chestGrantsLantern,
+        };
+    }
+
+    /// <summary>Центр лабиринта средней комнаты — (1,1) для 2×2 и 3×3; при наступлении открывается вся карта.</summary>
+    private static void GetMiddleRoomRevealCell(int step, int roomInner, int roomsPerSide, out int gx, out int gy)
+    {
+        int rx = roomsPerSide / 2;
+        int ry = roomsPerSide / 2;
+        int ox = rx * step;
+        int oy = ry * step;
+        gx = ox + 1 + roomInner / 2;
+        gy = oy + 1 + roomInner / 2;
+    }
+
+    private static int GetRoomMazeSeed(int rx, int ry) =>
+        unchecked(MazeSeed + rx * 104729 + ry * 224737 + rx * ry * 1009);
+
+    private static void GetRoomIndex(int gridX, int gridY, int step, int roomsPerSide, out int rx, out int ry)
+    {
+        int max = roomsPerSide - 1;
+        rx = gridX / step;
+        ry = gridY / step;
+        if (rx > max)
+            rx = max;
+        if (ry > max)
+            ry = max;
+    }
+
+    /// <summary>Komşu odalar arası kapılar ve köşe geçişleri (yer değiştirmeden sonra yeniden uygulanır).</summary>
+    public static void ApplyInterRoomConnections(int[,] grid, int roomInner, int roomsPerSide)
+    {
+        int step = roomInner + 2;
+        int mid = (roomInner + 1) / 2;
 
         for (int ry = 0; ry < roomsPerSide; ry++)
         {
@@ -93,68 +181,9 @@ public static class MapData
                     grid[xDoor, oy + 1] = 0;
             }
         }
-
-        EnsureFloor(grid, startX, startY);
-        EnsureFloor(grid, revealX, revealY);
-
-        int worldSeed = unchecked(Environment.TickCount ^ (int)(DateTime.UtcNow.Ticks & 0x7FFFFFFF));
-        var rng = new Random(worldSeed);
-
-        PlaceRandomObstaclesPreservingConnectivity(grid, mapW, mapH, rng, startX, startY, revealX, revealY, difficulty);
-
-        if (!TryPlaceExit(grid, mapW, mapH, rng, startX, startY, out int exitX, out int exitY))
-        {
-            if (!TryPlaceExit(grid, mapW, mapH, new Random(0), startX, startY, out exitX, out exitY))
-                throw new InvalidOperationException("Место выхода не найдено.");
-        }
-
-        grid[exitX, exitY] = 4;
-
-        PlaceChestsThreeRooms(grid, mapW, mapH, rng, roomInner, step, difficulty, startX, startY, exitX, exitY, revealX, revealY);
-
-        GetRoomIndex(exitX, exitY, step, roomsPerSide, out int exitRoomX, out int exitRoomY);
-
-        var tileData = (int[,])grid.Clone();
-        var tileMap = new TileMap(tileData, tileSizePixels, exitRoomX, exitRoomY, step, roomsPerSide);
-
-        return new DungeonMapResult
-        {
-            TileMap = tileMap,
-            ExitRoomIndexX = exitRoomX,
-            ExitRoomIndexY = exitRoomY,
-            StartGridX = startX,
-            StartGridY = startY,
-            RevealMarkerGridX = revealX,
-            RevealMarkerGridY = revealY,
-        };
     }
 
-    /// <summary>Центр лабиринта средней комнаты — (1,1) для 2×2 и 3×3; при наступлении открывается вся карта.</summary>
-    private static void GetMiddleRoomRevealCell(int step, int roomInner, int roomsPerSide, out int gx, out int gy)
-    {
-        int rx = roomsPerSide / 2;
-        int ry = roomsPerSide / 2;
-        int ox = rx * step;
-        int oy = ry * step;
-        gx = ox + 1 + roomInner / 2;
-        gy = oy + 1 + roomInner / 2;
-    }
-
-    private static int GetRoomMazeSeed(int rx, int ry) =>
-        unchecked(MazeSeed + rx * 104729 + ry * 224737 + rx * ry * 1009);
-
-    private static void GetRoomIndex(int gridX, int gridY, int step, int roomsPerSide, out int rx, out int ry)
-    {
-        int max = roomsPerSide - 1;
-        rx = gridX / step;
-        ry = gridY / step;
-        if (rx > max)
-            rx = max;
-        if (ry > max)
-            ry = max;
-    }
-
-    private static void EnsureFloor(int[,] grid, int x, int y)
+    internal static void EnsureFloor(int[,] grid, int x, int y)
     {
         if (x < 0 || x >= grid.GetLength(0) || y < 0 || y >= grid.GetLength(1))
             return;
@@ -162,6 +191,57 @@ public static class MapData
         if (id == 2 || id == 3 || id == 4 || id == 5)
             return;
         grid[x, y] = 0;
+    }
+
+    /// <summary>Oda merkezinden her komşu haritaya açılan kapı hattına Manhattan koridor (yalnızca Hard).</summary>
+    private static void EnsureHardRoomPortalLinks(int[,] grid, int roomInner, int step, int roomsPerSide)
+    {
+        int mid = (roomInner + 1) / 2;
+        for (int ry = 0; ry < roomsPerSide; ry++)
+        {
+            for (int rx = 0; rx < roomsPerSide; rx++)
+            {
+                int ox = rx * step;
+                int oy = ry * step;
+                int hx = ox + mid;
+                int hy = oy + mid;
+
+                if (rx < roomsPerSide - 1)
+                    HardCarveCorridor(grid, hx, hy, ox + roomInner, oy + mid);
+                if (rx > 0)
+                    HardCarveCorridor(grid, hx, hy, ox + 1, oy + mid);
+                if (ry < roomsPerSide - 1)
+                    HardCarveCorridor(grid, hx, hy, ox + mid, oy + roomInner);
+                if (ry > 0)
+                    HardCarveCorridor(grid, hx, hy, ox + mid, oy + 1);
+            }
+        }
+    }
+
+    /// <summary>Kapı karosu (2) korunur; duvar ve kasalar/çıkış öncesi engeller temizlenir.</summary>
+    private static void HardClearWalkTile(int[,] grid, int x, int y)
+    {
+        if (grid[x, y] == 2)
+            return;
+        grid[x, y] = 0;
+    }
+
+    private static void HardCarveCorridor(int[,] grid, int x0, int y0, int x1, int y1)
+    {
+        int x = x0, y = y0;
+        HardClearWalkTile(grid, x, y);
+        while (x != x1 || y != y1)
+        {
+            if (x < x1)
+                x++;
+            else if (x > x1)
+                x--;
+            else if (y < y1)
+                y++;
+            else if (y > y1)
+                y--;
+            HardClearWalkTile(grid, x, y);
+        }
     }
 
     private static void CarveRoomMaze(int[,] grid, int ox, int oy, int w, Random rng)
@@ -284,6 +364,10 @@ public static class MapData
         int protectY2,
         MapDifficulty difficulty)
     {
+        // Zor modda kasalar ve çıkış her zaman açık bağlantıyla kalsın (dar tüneller kapanmasın).
+        if (difficulty == MapDifficulty.Hard)
+            return;
+
         var candidates = new List<(int x, int y)>();
         for (int y = 0; y < mapH; y++)
         {
@@ -414,9 +498,14 @@ public static class MapData
         return n;
     }
 
-    /// <summary>Три сундука: в сложном режиме по диагонали (0,0),(1,1),(2,2); в лёгком 2×2 — в трёх разных комнатах.</summary>
-    private static void PlaceChestsThreeRooms(
+    private const int TotalGameplayChests = 4;
+    private const int KeyChestTarget = 2;
+    private const int LanternChestTarget = 2;
+
+    /// <summary>Dört sandık: iki anahtar, iki fener güçlendirmesi (aynı görünüm, karo 3).</summary>
+    private static void PlaceChestsFourWithKinds(
         int[,] grid,
+        bool[,] chestGrantsLantern,
         int mapW,
         int mapH,
         Random rng,
@@ -437,23 +526,34 @@ public static class MapData
             (revealX, revealY),
         };
 
-        ReadOnlySpan<(int rx, int ry)> targetRooms = difficulty == MapDifficulty.Easy
-            ? stackalloc[] { (0, 0), (1, 0), (0, 1) }
-            : stackalloc[] { (0, 0), (1, 1), (2, 2) };
-        int placedCount = 0;
+        ReadOnlySpan<(int rx, int ry, bool lantern)> plan = difficulty == MapDifficulty.Easy
+            ? stackalloc[] { (0, 0, false), (1, 1, false), (1, 0, true), (0, 1, true) }
+            : stackalloc[] { (0, 0, false), (1, 1, false), (2, 2, true), (2, 0, true) };
 
-        foreach (var (rx, ry) in targetRooms)
+        int placed = 0;
+        int keysPlaced = 0;
+        int lanternsPlaced = 0;
+
+        for (int i = 0; i < plan.Length; i++)
         {
-            if (TryPlaceChestInRoom(grid, mapW, mapH, roomInner, step, rx, ry, exclude, out int cx, out int cy))
-            {
-                grid[cx, cy] = 3;
-                placedCount++;
-                exclude.Add((cx, cy));
-            }
+            var (rx, ry, lantern) = plan[i];
+            if (!TryPlaceChestInRoom(grid, mapW, mapH, roomInner, step, rx, ry, exclude, out int cx, out int cy))
+                continue;
+            grid[cx, cy] = 3;
+            chestGrantsLantern[cx, cy] = lantern;
+            exclude.Add((cx, cy));
+            placed++;
+            if (lantern)
+                lanternsPlaced++;
+            else
+                keysPlaced++;
         }
 
-        if (placedCount < 3)
-            PlaceChestsInDeadEndsFallback(grid, mapW, mapH, rng, startX, startY, exitX, exitY, revealX, revealY, 3 - placedCount);
+        int needKeys = KeyChestTarget - keysPlaced;
+        int needLanterns = LanternChestTarget - lanternsPlaced;
+        int needTotal = needKeys + needLanterns;
+        if (needTotal > 0 && placed < TotalGameplayChests)
+            PlaceChestsInDeadEndsFallback(grid, chestGrantsLantern, mapW, mapH, rng, startX, startY, exitX, exitY, revealX, revealY, needKeys, needLanterns);
     }
 
     private static bool TryPlaceChestInRoom(
@@ -516,6 +616,7 @@ public static class MapData
 
     private static void PlaceChestsInDeadEndsFallback(
         int[,] grid,
+        bool[,] chestGrantsLantern,
         int mapW,
         int mapH,
         Random rng,
@@ -525,8 +626,10 @@ public static class MapData
         int exitY,
         int revealX,
         int revealY,
-        int needMore)
+        int needMoreKeys,
+        int needMoreLanterns)
     {
+        int needMore = needMoreKeys + needMoreLanterns;
         if (needMore <= 0)
             return;
 
@@ -609,6 +712,7 @@ public static class MapData
             if (grid[px, py] != 0)
                 continue;
             grid[px, py] = 3;
+            chestGrantsLantern[px, py] = placed >= needMoreKeys;
             placed++;
         }
     }
