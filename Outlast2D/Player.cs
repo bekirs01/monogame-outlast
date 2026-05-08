@@ -38,6 +38,10 @@ public class Player
     /// <summary>Горизонтальное направление: true = смотрит влево (спрайт отражён).</summary>
     private bool _faceLeft;
 
+    /// <summary>Son başarılı grid adımı (Space mermi yönü için).</summary>
+    private int _lastMoveDx = 1;
+    private int _lastMoveDy;
+
     public Player(int startGridX, int startGridY)
     {
         GridX = startGridX;
@@ -88,6 +92,8 @@ public class Player
 
         if (_secondsSinceLastStep >= SecondsBetweenSteps)
         {
+            int prevX = GridX;
+            int prevY = GridY;
             int newX = GridX;
             int newY = GridY;
 
@@ -108,11 +114,53 @@ public class Player
                     {
                         GridX = newX;
                         GridY = newY;
+                        _lastMoveDx = GridX - prevX;
+                        _lastMoveDy = GridY - prevY;
                     }
                 }
 
                 _secondsSinceLastStep = 0f;
             }
+        }
+    }
+
+    /// <summary>Yön önce WASD; basılı değilse son yürüme yönü.</summary>
+    public void GetShootDirection(KeyboardState kb, out int dx, out int dy)
+    {
+        if (kb.IsKeyDown(Keys.W) || kb.IsKeyDown(Keys.Up))
+        {
+            dx = 0;
+            dy = -1;
+            return;
+        }
+
+        if (kb.IsKeyDown(Keys.S) || kb.IsKeyDown(Keys.Down))
+        {
+            dx = 0;
+            dy = 1;
+            return;
+        }
+
+        if (kb.IsKeyDown(Keys.A) || kb.IsKeyDown(Keys.Left))
+        {
+            dx = -1;
+            dy = 0;
+            return;
+        }
+
+        if (kb.IsKeyDown(Keys.D) || kb.IsKeyDown(Keys.Right))
+        {
+            dx = 1;
+            dy = 0;
+            return;
+        }
+
+        dx = _lastMoveDx;
+        dy = _lastMoveDy;
+        if (dx == 0 && dy == 0)
+        {
+            dx = 1;
+            dy = 0;
         }
     }
 

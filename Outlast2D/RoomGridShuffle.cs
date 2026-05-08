@@ -12,7 +12,7 @@ public static class RoomGridShuffle
     public static bool TryShuffle(
         TileMap map,
         bool[,] chestOpened,
-        bool[,] chestGrantsLantern,
+        ChestRewardKind[,] chestRewards,
         Player player,
         ref int revealMarkerGridX,
         ref int revealMarkerGridY,
@@ -92,7 +92,7 @@ public static class RoomGridShuffle
             mapW,
             mapH,
             chestOpened,
-            chestGrantsLantern,
+            chestRewards,
             player,
             ref revealMarkerGridX,
             ref revealMarkerGridY);
@@ -183,13 +183,13 @@ public static class RoomGridShuffle
         int mapW,
         int mapH,
         bool[,] chestOpened,
-        bool[,] chestGrantsLantern,
+        ChestRewardKind[,] chestRewards,
         Player player,
         ref int revealMarkerGridX,
         ref int revealMarkerGridY)
     {
         var newChest = new bool[mapW, mapH];
-        var newLantern = new bool[mapW, mapH];
+        var newRewards = new ChestRewardKind[mapW, mapH];
 
         for (int y = 0; y < mapH; y++)
         {
@@ -207,11 +207,12 @@ public static class RoomGridShuffle
         {
             for (int x = 0; x < mapW; x++)
             {
-                if (!chestGrantsLantern[x, y])
+                ChestRewardKind k = chestRewards[x, y];
+                if (k == ChestRewardKind.None)
                     continue;
                 var t = Transform(x, y, receivesFrom, rects, step, roomsPerSide);
                 if (t.nx >= 0 && t.nx < mapW && t.ny >= 0 && t.ny < mapH)
-                    newLantern[t.nx, t.ny] = true;
+                    newRewards[t.nx, t.ny] = k;
             }
         }
 
@@ -220,7 +221,7 @@ public static class RoomGridShuffle
             for (int x = 0; x < mapW; x++)
             {
                 chestOpened[x, y] = newChest[x, y];
-                chestGrantsLantern[x, y] = newLantern[x, y];
+                chestRewards[x, y] = newRewards[x, y];
             }
         }
 

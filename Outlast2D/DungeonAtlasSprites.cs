@@ -8,6 +8,9 @@ public static class DungeonAtlasSprites
 {
     public const int KeysToWin = 2;
 
+    /// <summary>Mermi sandığından gelen şarjör boyutu.</summary>
+    public const int AmmoPerAmmoChest = 5;
+
     public static readonly Rectangle ChestFullClosed = new Rectangle(304, 416, 16, 16);
     public static readonly Rectangle[] ChestFullOpenFrames =
     {

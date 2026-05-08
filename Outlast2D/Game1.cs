@@ -21,7 +21,7 @@ public class Game1 : Game
     private TileMap _tileMap;
     private Player _player;
     private bool[,] _chestOpened;
-    private bool[,] _chestGrantsLantern = null!;
+    private ChestRewardKind[,] _chestRewards = null!;
     /// <summary>0–2: her biri bir fener sandığı ödülü.</summary>
     private int _lanternUpgradesCollected;
     private int _animChestX = -1;
@@ -74,6 +74,18 @@ public class Game1 : Game
     /// <summary>M ile tam harita (ekrandaki gibi tüm ızgara).</summary>
     private bool _manualFullMapView;
     private bool _mKeyWasDown;
+
+    private int _ammoRemaining;
+    private bool _spaceWasDown;
+    private bool _bulletActive;
+    private int _bulletSegFromGx;
+    private int _bulletSegFromGy;
+    private int _bulletSegToGx;
+    private int _bulletSegToGy;
+    private int _bulletDirX;
+    private int _bulletDirY;
+    private float _bulletTween01;
+    private const float BulletCrossTileSeconds = 0.09f;
 
     private static readonly Color RevealMarkerColor = new Color(255, 230, 80);
 
@@ -206,8 +218,11 @@ public class Game1 : Game
             DepthFormat.None);
 
         _chestOpened = new bool[_tileMap.WidthInTiles, _tileMap.HeightInTiles];
-        _chestGrantsLantern = built.ChestGrantsLantern;
+        _chestRewards = built.ChestRewards;
         _lanternUpgradesCollected = 0;
+        _ammoRemaining = 0;
+        _bulletActive = false;
+        _spaceWasDown = false;
         _player = new Player(built.StartGridX, built.StartGridY);
         _keysCollected = 0;
         _gameWon = false;
@@ -327,6 +342,8 @@ public class Game1 : Game
         if (!_gameWon)
         {
             _player.Update(kb, _tileMap, dt, _keysCollected);
+            UpdateBullet(dt);
+            TryFireBullet(kb);
             UpdateChestKeysAndWin(dt);
         }
 
@@ -343,10 +360,11 @@ public class Game1 : Game
                 _shuffleRoundSecondsRemaining = ShuffleRoundDurationSeconds;
                 if (_currentDifficulty == MapDifficulty.Hard)
                 {
-                    RoomGridShuffle.TryShuffle(_tileMap, _chestOpened, _chestGrantsLantern, _player, ref _revealMarkerTileX, ref _revealMarkerTileY, _shuffleRng);
+                    RoomGridShuffle.TryShuffle(_tileMap, _chestOpened, _chestRewards, _player, ref _revealMarkerTileX, ref _revealMarkerTileY, _shuffleRng);
                     _animChestX = -1;
                     _animChestY = -1;
                     _chestAnimT = 0f;
+                    _bulletActive = false;
                 }
             }
         }
@@ -479,20 +497,23 @@ public class Game1 : Game
             if (_chestAnimT >= 1f)
             {
                 _chestOpened[x, y] = true;
-                bool lantern = _chestGrantsLantern[x, y];
-                if (lantern)
+                switch (_chestRewards[x, y])
                 {
-                    if (_lanternUpgradesCollected < 2)
-                        _lanternUpgradesCollected++;
-                }
-                else
-                {
-                    _keysCollected++;
-                    if (_keysCollected > DungeonAtlasSprites.KeysToWin)
-                        _keysCollected = DungeonAtlasSprites.KeysToWin;
-                    _keyFloatGx = x;
-                    _keyFloatGy = y;
-                    _keyFloatT = 0f;
+                    case ChestRewardKind.Lantern:
+                        if (_lanternUpgradesCollected < 2)
+                            _lanternUpgradesCollected++;
+                        break;
+                    case ChestRewardKind.Key:
+                        _keysCollected++;
+                        if (_keysCollected > DungeonAtlasSprites.KeysToWin)
+                            _keysCollected = DungeonAtlasSprites.KeysToWin;
+                        _keyFloatGx = x;
+                        _keyFloatGy = y;
+                        _keyFloatT = 0f;
+                        break;
+                    case ChestRewardKind.Ammo:
+                        _ammoRemaining = DungeonAtlasSprites.AmmoPerAmmoChest;
+                        break;
                 }
 
                 _chestAnimT = 0f;
@@ -515,6 +536,115 @@ public class Game1 : Game
             Window.Title = "Outlast 2D — ПОБЕДА!";
             Console.WriteLine("ПОБЕДА! Вы вышли с двумя ключами.");
             Console.Out.Flush();
+        }
+    }
+
+    private void TryFireBullet(KeyboardState kb)
+    {
+        bool spaceDown = kb.IsKeyDown(Keys.Space);
+        bool pressedEdge = spaceDown && !_spaceWasDown;
+        _spaceWasDown = spaceDown;
+
+        if (!pressedEdge || _gameWon || _bulletActive || _ammoRemaining <= 0)
+            return;
+
+        _player.GetShootDirection(kb, out int dx, out int dy);
+        _ammoRemaining--;
+
+        _bulletDirX = dx;
+        _bulletDirY = dy;
+        _bulletSegFromGx = _player.GridX;
+        _bulletSegFromGy = _player.GridY;
+        _bulletSegToGx = _player.GridX + dx;
+        _bulletSegToGy = _player.GridY + dy;
+        _bulletTween01 = 0f;
+        _bulletActive = true;
+    }
+
+    private void UpdateBullet(float dt)
+    {
+        if (!_bulletActive)
+            return;
+
+        float dur = BulletCrossTileSeconds;
+        if (dur <= 1e-6f)
+            dur = 1e-6f;
+
+        _bulletTween01 += dt / dur;
+
+        while (_bulletTween01 >= 1f && _bulletActive)
+        {
+            _bulletTween01 -= 1f;
+
+            int gx = _bulletSegToGx;
+            int gy = _bulletSegToGy;
+            int w = _tileMap.WidthInTiles;
+            int h = _tileMap.HeightInTiles;
+
+            if (gx < 0 || gx >= w || gy < 0 || gy >= h)
+            {
+                _bulletActive = false;
+                break;
+            }
+
+            int id = _tileMap.GetTileId(gx, gy);
+            if (id == 1)
+            {
+                _tileMap.TryBreakWall(gx, gy);
+                _bulletActive = false;
+                break;
+            }
+
+            if (id != 0)
+            {
+                _bulletActive = false;
+                break;
+            }
+
+            _bulletSegFromGx = _bulletSegToGx;
+            _bulletSegFromGy = _bulletSegToGy;
+            _bulletSegToGx += _bulletDirX;
+            _bulletSegToGy += _bulletDirY;
+        }
+    }
+
+    private void DrawBulletWorld(int tileSizePixels)
+    {
+        if (!_bulletActive)
+            return;
+
+        float fx = _bulletSegFromGx + 0.5f + (_bulletSegToGx - _bulletSegFromGx) * _bulletTween01;
+        float fy = _bulletSegFromGy + 0.5f + (_bulletSegToGy - _bulletSegFromGy) * _bulletTween01;
+
+        int bs = Math.Max(4, tileSizePixels / 5);
+        int px = (int)Math.Round(fx * tileSizePixels - bs * 0.5f);
+        int py = (int)Math.Round(fy * tileSizePixels - bs * 0.5f);
+
+        var dest = new Rectangle(px, py, bs, bs);
+        _spriteBatch.Draw(_pixelTexture, dest, new Color(255, 210, 70));
+        int inset = Math.Max(1, bs / 6);
+        _spriteBatch.Draw(_pixelTexture, new Rectangle(dest.X + inset, dest.Y + inset, dest.Width - 2 * inset, dest.Height - 2 * inset), new Color(255, 245, 160));
+    }
+
+    private void DrawAmmoHud(int screenW, int screenH)
+    {
+        int maxAmmo = DungeonAtlasSprites.AmmoPerAmmoChest;
+        int pad = 10;
+        int box = 14;
+        int gap = 4;
+        int rowY = screenH - pad - box - 8;
+        int startX = pad;
+
+        for (int i = 0; i < maxAmmo; i++)
+        {
+            var outline = new Rectangle(startX + i * (box + gap), rowY, box, box);
+            _spriteBatch.Draw(_pixelTexture, outline, new Color(28, 26, 34, 230));
+            if (_ammoRemaining > i)
+            {
+                int inset = 3;
+                var inner = new Rectangle(outline.X + inset, outline.Y + inset, box - 2 * inset, box - 2 * inset);
+                _spriteBatch.Draw(_pixelTexture, inner, new Color(255, 200, 55));
+            }
         }
     }
 
@@ -567,11 +697,13 @@ public class Game1 : Game
             _playerAtlas,
             _kenneyCrate,
             _chestOpened,
+            _chestRewards,
             _animChestX,
             _animChestY,
             _chestAnimT,
             _keysCollected);
         DrawRevealMarkerDot(t);
+        DrawBulletWorld(t);
         _player.Draw(_spriteBatch, _playerAtlas, t);
         DrawKeyFloatPickup(t);
         _spriteBatch.End();
@@ -595,6 +727,7 @@ public class Game1 : Game
             DrawRoundTimer(sw, sh);
             DrawMiniMapHint();
             DrawKeysHud(sw, sh);
+            DrawAmmoHud(sw, sh);
             DrawBackToMapButton(sw, sh);
             if (_gameWon)
                 DrawWinOverlay(sw, sh);
@@ -653,6 +786,7 @@ public class Game1 : Game
             DrawRoundTimer(sw, sh);
             DrawMiniMapHint();
             DrawKeysHud(sw, sh);
+            DrawAmmoHud(sw, sh);
             DrawBackToMapButton(sw, sh);
             if (_gameWon)
                 DrawWinOverlay(sw, sh);

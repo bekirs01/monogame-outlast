@@ -114,6 +114,17 @@ public class TileMap
         return false;
     }
 
+    /// <summary>Yalnızca düvar karosu (1) kırılır; kapı / çıkış / sandık dokunulmaz.</summary>
+    public bool TryBreakWall(int gx, int gy)
+    {
+        if (gx < 0 || gx >= WidthInTiles || gy < 0 || gy >= HeightInTiles)
+            return false;
+        if (_tiles[gx, gy] != 1)
+            return false;
+        _tiles[gx, gy] = 0;
+        return true;
+    }
+
     /// <param name="floorByRoom">9 шт. — пол Kenney (64×64).</param>
     /// <param name="wallByRoom">9 шт. — стена Kenney.</param>
     public void Draw(
@@ -124,6 +135,7 @@ public class TileMap
         Texture2D dungeonAtlas,
         Texture2D obstacleCrate,
         bool[,] chestOpened,
+        ChestRewardKind[,] chestRewards,
         int animChestX,
         int animChestY,
         float chestAnimT01,
@@ -163,9 +175,20 @@ public class TileMap
                     var inner = new Rectangle(x * s + inset, y * s + inset, s - 2 * inset, s - 2 * inset);
                     bool opened = chestOpened[x, y];
                     bool animating = !opened && animChestX == x && animChestY == y && chestAnimT01 > 0f;
-                    var src = DungeonAtlasSprites.ChestFrameForDraw(opened, animating, chestAnimT01);
-                    Color tint = opened ? new Color(210, 210, 210) : Color.White;
-                    spriteBatch.Draw(dungeonAtlas, inner, src, tint);
+
+                    if (chestRewards[x, y] == ChestRewardKind.Ammo)
+                    {
+                        Color tint = opened ? new Color(175, 175, 195) : Color.White;
+                        if (animating)
+                            tint = Color.Lerp(Color.White, tint, chestAnimT01);
+                        spriteBatch.Draw(obstacleCrate, inner, null, tint);
+                    }
+                    else
+                    {
+                        var src = DungeonAtlasSprites.ChestFrameForDraw(opened, animating, chestAnimT01);
+                        Color tint = opened ? new Color(210, 210, 210) : Color.White;
+                        spriteBatch.Draw(dungeonAtlas, inner, src, tint);
+                    }
                 }
                 else if (id == 4)
                 {

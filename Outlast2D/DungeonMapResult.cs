@@ -11,6 +11,6 @@ public sealed class DungeonMapResult
     public int RevealMarkerGridX { get; init; }
     public int RevealMarkerGridY { get; init; }
 
-    /// <summary>true ise sandık anahtar değil; açılınca fener menzili büyür (görünüş aynı karo 3).</summary>
-    public required bool[,] ChestGrantsLantern { get; init; }
+    /// <summary>Her karo için sandık ödülü (yalnızca karo 3 olan hücrelerde dolu).</summary>
+    public required ChestRewardKind[,] ChestRewards { get; init; }
 }
